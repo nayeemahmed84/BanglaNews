@@ -1,0 +1,47 @@
+.filter-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    position: sticky;
+    top: var(--header-height);
+    z-index: 900;
+}
+
+.filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.filter-content {
+    display: flex;
+    align-items: center;
+}
+
+.category-list {
+    display: flex;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: var(--background);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+}
+
+.filter-btn:hover {
+    background: var(--border);
+    color: var(--text-main);
+}
+
+.filter-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
