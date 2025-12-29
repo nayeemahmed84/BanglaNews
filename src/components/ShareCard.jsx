@@ -76,6 +76,7 @@ const ShareCard = ({ news, onClose }) => {
             }
         } catch (error) {
             console.error('Download failed:', error);
+            alert(`সংরক্ষণ ব্যর্থ হয়েছে: ${error.message || error}`);
             saveAs(generatedBlob, `bangla-news-card-${Date.now()}.png`);
         }
     };
