@@ -64,6 +64,13 @@ const NEWS_SOURCES = [
     url: 'https://www.thedailystar.net/bangla/feed',
     homepage: 'https://www.thedailystar.net/bangla',
     color: '#0891b2'
+  },
+  {
+    name: 'বিবিসি বাংলা',
+    id: 'bbc-bangla',
+    url: 'https://feeds.bbci.co.uk/bengali/rss.xml',
+    homepage: 'https://www.bbc.com/bengali',
+    color: '#b80000'
   }
 ];
 
