@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import { Download, Share2, X, Image } from 'lucide-react';
@@ -6,7 +6,7 @@ import './ShareCard.css';
 
 const ShareCard = ({ news, onClose }) => {
     const cardRef = useRef(null);
-    const [generating, setGenerating] = useState(false);
+    const [generating, setGenerating] = useState(true);
     const [generatedBlob, setGeneratedBlob] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -21,31 +21,60 @@ const ShareCard = ({ news, onClose }) => {
     };
 
     const generateImage = async () => {
-        if (!cardRef.current) return;
+        if (!cardRef.current) {
+            console.error('Canvas Ref is null');
+            return;
+        }
 
+        console.log('Starting image generation for:', title);
         setGenerating(true);
+
+        // Timeout promise to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout after 8s')), 8000)
+        );
+
         try {
-            const canvas = await html2canvas(cardRef.current, {
+            console.log('Waiting 500ms for images...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const canvasPromise = html2canvas(cardRef.current, {
                 scale: 2,
                 useCORS: true,
                 allowTaint: true,
-                backgroundColor: '#1e293b'
+                backgroundColor: '#1e293b',
+                logging: true
             });
 
-            // Convert canvas to blob
+            console.log('Calling html2canvas...');
+            // Race against timeout
+            const canvas = await Promise.race([canvasPromise, timeoutPromise]);
+            console.log('Canvas created:', canvas.width, 'x', canvas.height);
+
             canvas.toBlob((blob) => {
                 if (blob) {
+                    console.log('Blob created:', blob.size);
                     setGeneratedBlob(blob);
                     setPreviewUrl(URL.createObjectURL(blob));
+                } else {
+                    console.error('Blob is null');
                 }
+                setGenerating(false);
             }, 'image/png', 1.0);
         } catch (error) {
             console.error('Failed to generate image:', error);
-            alert('ছবি তৈরি করতে সমস্যা হয়েছে');
-        } finally {
             setGenerating(false);
         }
     };
+
+    useEffect(() => {
+        generateImage();
+
+        // Cleanup
+        return () => {
+            if (previewUrl) URL.revokeObjectURL(previewUrl);
+        };
+    }, []);
 
     const downloadImage = async () => {
         if (!generatedBlob) return;
@@ -99,25 +128,36 @@ const ShareCard = ({ news, onClose }) => {
             }
         } catch (error) {
             console.error('Share failed:', error);
-            downloadImage();
+            // It often fails on desktop or if canceling share sheet, no need to alert error always
         }
     };
+
+    // Show source if generating OR if we don't have a preview yet (failure case)
+    const showSource = generating || !previewUrl;
 
     return (
         <div className="share-card-overlay">
             <div className="share-card-container">
-                <button className="share-card-close" onClick={onClose}>
+                <button className="share-card-close" onClick={onClose} style={{ zIndex: 3001 }}>
                     <X size={24} />
                 </button>
 
                 <h3 className="share-card-title">
                     <Image size={20} />
-                    ফটো কার্ড তৈরি করুন
+                    ফটো কার্ড
                 </h3>
 
-                {/* The card that will be converted to image */}
-                <div className="share-card-preview" ref={cardRef}>
-                    <div className="photo-card">
+                {/* Container for the DOM element - needed for generation but hidden after */}
+                <div
+                    className="share-card-preview"
+                    style={{
+                        position: showSource ? 'relative' : 'absolute',
+                        opacity: showSource ? 1 : 0,
+                        pointerEvents: 'none',
+                        zIndex: showSource ? 1 : -1
+                    }}
+                >
+                    <div className="photo-card" ref={cardRef}>
                         {image ? (
                             <div className="photo-card-image">
                                 <img src={image} alt={title} crossOrigin="anonymous" />
@@ -146,44 +186,33 @@ const ShareCard = ({ news, onClose }) => {
                     </div>
                 </div>
 
-                {/* Generated preview */}
-                {previewUrl && (
-                    <div className="generated-preview">
-                        <p>প্রিভিউ:</p>
-                        <img src={previewUrl} alt="Generated card" />
+                {/* Show generating state or final result */}
+                {generating ? (
+                    <div className="generating-state">
+                        <div className="loader-spinner"></div>
+                        <p>কার্ড তৈরি হচ্ছে...</p>
                     </div>
+                ) : (
+                    previewUrl && (
+                        <div className="generated-preview show">
+                            <img src={previewUrl} alt="Generated card" />
+                        </div>
+                    )
                 )}
 
-                {/* Actions */}
-                <div className="share-card-actions">
-                    {!generatedBlob ? (
-                        <button
-                            className="btn-generate"
-                            onClick={generateImage}
-                            disabled={generating}
-                        >
-                            {generating ? 'তৈরি হচ্ছে...' : 'ছবি তৈরি করুন'}
+                {/* Actions - only show when ready */}
+                {!generating && (
+                    <div className="share-card-actions">
+                        <button className="btn-download" onClick={downloadImage}>
+                            <Download size={18} />
+                            ডাউনলোড
                         </button>
-                    ) : (
-                        <>
-                            <button className="btn-download" onClick={downloadImage}>
-                                <Download size={18} />
-                                ডাউনলোড
-                            </button>
-                            <button className="btn-share" onClick={shareImage}>
-                                <Share2 size={18} />
-                                শেয়ারকরুন
-                            </button>
-                            <button className="btn-regenerate" onClick={() => {
-                                setGeneratedBlob(null);
-                                if (previewUrl) URL.revokeObjectURL(previewUrl);
-                                setPreviewUrl(null);
-                            }}>
-                                আবার তৈরি করুন
-                            </button>
-                        </>
-                    )}
-                </div>
+                        <button className="btn-share" onClick={shareImage}>
+                            <Share2 size={18} />
+                            শেয়ার
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

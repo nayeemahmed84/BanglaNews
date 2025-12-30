@@ -80,8 +80,9 @@ const NewsModal = ({ news, onClose }) => {
     };
 
     const handleExternalLink = async (e) => {
+        e.preventDefault();
+
         if (window.__TAURI_INTERNALS__) {
-            e.preventDefault();
             try {
                 const { open } = await import('@tauri-apps/plugin-shell');
                 await open(link);
@@ -89,6 +90,8 @@ const NewsModal = ({ news, onClose }) => {
                 console.error('Failed to open link via Tauri:', err);
                 window.open(link, '_blank');
             }
+        } else {
+            window.open(link, '_blank');
         }
     };
 
@@ -147,16 +150,13 @@ const NewsModal = ({ news, onClose }) => {
                                 <Image size={18} />
                                 ফটো কার্ড
                             </button>
-                            <a
-                                href={link}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <button
                                 className="btn-primary"
                                 onClick={handleExternalLink}
                             >
                                 <ExternalLink size={18} />
                                 মূল সাইট
-                            </a>
+                            </button>
                             <button className="btn-secondary" onClick={handleShare}>
                                 <Share2 size={18} />
                                 শেয়ার

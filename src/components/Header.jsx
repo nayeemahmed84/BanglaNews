@@ -3,13 +3,18 @@ import { Search, Moon, Sun, Newspaper } from 'lucide-react';
 import './Header.css';
 
 const Header = ({ onSearch, searchQuery }) => {
-    const [isDark, setIsDark] = useState(false);
+    const [isDark, setIsDark] = useState(() => {
+        const savedTheme = localStorage.getItem('theme');
+        return savedTheme === 'dark';
+    });
 
     useEffect(() => {
         if (isDark) {
             document.documentElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
         } else {
             document.documentElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
         }
     }, [isDark]);
 

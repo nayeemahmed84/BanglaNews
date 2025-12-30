@@ -49,9 +49,13 @@ function App() {
 
   // Update a single article's image
   const handleImageFound = useCallback((articleId, imageUrl) => {
-    setAllNews(prev => prev.map(article =>
-      article.id === articleId ? { ...article, image: imageUrl } : article
-    ));
+    setAllNews(prev => {
+      const updated = prev.map(article =>
+        article.id === articleId ? { ...article, image: imageUrl } : article
+      );
+      localStorage.setItem('news_cache', JSON.stringify(updated));
+      return updated;
+    });
   }, []);
 
   // Scrape missing images in background
@@ -65,20 +69,57 @@ function App() {
   }, [handleImageFound]);
 
   const loadNews = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true);
+    if (showLoading) {
+      try {
+        const cached = localStorage.getItem('news_cache');
+        if (cached) {
+          setAllNews(JSON.parse(cached));
+          setLoading(false);
+        } else {
+          setLoading(true);
+        }
+      } catch (e) {
+        console.error('Cache error:', e);
+        setLoading(true);
+      }
+    }
+
     try {
       const data = await fetchNews();
-      setAllNews(data);
+
+      setAllNews(prevNews => {
+        // Merge existing images with new data to prevent flickering
+        const imageMap = new Map();
+        if (Array.isArray(prevNews)) {
+          prevNews.forEach(item => {
+            if (item.image) imageMap.set(item.id, item.image);
+          });
+        }
+
+        const mergedData = data.map(item => ({
+          ...item,
+          image: imageMap.get(item.id) || item.image
+        }));
+
+        localStorage.setItem('news_cache', JSON.stringify(mergedData));
+
+        // Start scraping images in background with the merged data
+        setTimeout(() => scrapeImages(mergedData), 1000);
+
+        return mergedData;
+      });
+
       setError(null);
       setLastUpdated(new Date());
       setPage(1);
-
-      // Start scraping images in background
-      setTimeout(() => scrapeImages(data), 1000);
     } catch (err) {
-      setError('খবর লোড করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।');
+      console.error('Fetch error:', err);
+      // Only show error if we have no cached data to show
+      if (!localStorage.getItem('news_cache')) {
+        setError('খবর লোড করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।');
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   }, [scrapeImages]);
 
