@@ -200,3 +200,15 @@
     flex-wrap: wrap;
   }
 }
+
+.refresh-badge {
+  font-size: 0.75rem;
+  color: #d97706;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+}

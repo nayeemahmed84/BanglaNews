@@ -18,6 +18,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingImages, setLoadingImages] = useState(false);
+  const [backgroundRefreshing, setBackgroundRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -73,8 +74,26 @@ function App() {
       try {
         const cached = localStorage.getItem('news_cache');
         if (cached) {
-          setAllNews(JSON.parse(cached));
-          setLoading(false);
+          const parsed = JSON.parse(cached);
+          // Filter items older than 24 hours
+          const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          const freshCache = parsed.filter(item => {
+            try {
+              return new Date(item.pubDate) > oneDayAgo;
+            } catch {
+              return false;
+            }
+          });
+
+          if (freshCache.length > 0) {
+            setAllNews(freshCache);
+            setLoading(false);
+            setBackgroundRefreshing(true);
+          } else {
+            // All cached items are old
+            localStorage.removeItem('news_cache');
+            setLoading(true);
+          }
         } else {
           setLoading(true);
         }
@@ -120,6 +139,7 @@ function App() {
       }
     } finally {
       if (showLoading) setLoading(false);
+      setBackgroundRefreshing(false);
     }
   }, [scrapeImages]);
 
@@ -225,6 +245,12 @@ function App() {
               <span className="loading-images">
                 <Image size={14} className="spin" />
                 ছবি লোড হচ্ছে...
+              </span>
+            )}
+            {backgroundRefreshing && (
+              <span className="refresh-badge fade-in">
+                <RefreshCw size={12} className="spin" />
+                আপডেট চেক করা হচ্ছে...
               </span>
             )}
           </div>
