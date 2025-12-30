@@ -8,7 +8,7 @@ import { scrapeImagesForArticles } from './services/imageScraper';
 import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image } from 'lucide-react';
 import './App.css';
 
-const AUTO_REFRESH_INTERVAL = 120000; // 2 minutes
+const AUTO_REFRESH_INTERVAL = 300000; // 5 minutes
 const ITEMS_PER_PAGE = 20;
 
 function App() {
@@ -148,15 +148,28 @@ function App() {
     loadNews();
   }, [loadNews]);
 
-  // Auto-refresh
+  // Auto-refresh with jitter
   useEffect(() => {
     if (!autoRefresh) return;
 
-    const interval = setInterval(() => {
-      loadNews(false);
-    }, AUTO_REFRESH_INTERVAL);
+    let timeoutId;
 
-    return () => clearInterval(interval);
+    const scheduleRefresh = () => {
+      // Add random jitter between 0-60 seconds to appear more human
+      const jitter = Math.floor(Math.random() * 60000);
+      const delay = AUTO_REFRESH_INTERVAL + jitter;
+
+      console.log(`Next refresh scheduled in ${Math.round(delay / 1000)}s`);
+
+      timeoutId = setTimeout(() => {
+        loadNews(false);
+        scheduleRefresh(); // Schedule next refresh after completion
+      }, delay);
+    };
+
+    scheduleRefresh();
+
+    return () => clearTimeout(timeoutId);
   }, [autoRefresh, loadNews]);
 
   // Filter news when category or search changes
