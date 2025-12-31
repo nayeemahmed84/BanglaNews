@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Clock, Share2, Loader, Image } from 'lucide-react';
+import { X, ExternalLink, Clock, Share2, Loader, Image, Plus, Minus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { scrapeArticle } from '../services/articleScraper';
@@ -18,7 +18,9 @@ const formatDate = (pubDate) => {
 
 const NewsModal = ({ news, onClose }) => {
     const [fullContent, setFullContent] = useState(null);
+    const [fullContentHtml, setFullContentHtml] = useState(null);
     const [fullImage, setFullImage] = useState(null);
+    const [fontSize, setFontSize] = useState(16);
     const [loading, setLoading] = useState(false);
     const [scraped, setScraped] = useState(false);
     const [showShareCard, setShowShareCard] = useState(false);
@@ -42,10 +44,16 @@ const NewsModal = ({ news, onClose }) => {
             try {
                 const result = await scrapeArticle(link, sourceId);
                 if (result) {
-                    if (result.content && result.content.length > (content?.length || 0)) {
+                    if (result.contentHtml) {
+                        setFullContentHtml(result.contentHtml);
+                        setFullContent(result.content || content);
+                    } else if (result.content && result.content.length > (content?.length || 0)) {
                         setFullContent(result.content);
                     }
-                    if (result.image && !image) {
+
+                    if (result.images && result.images.length > 0) {
+                        setFullImage(result.images[0].src);
+                    } else if (result.image && !image) {
                         setFullImage(result.image);
                     }
                 }
@@ -98,11 +106,68 @@ const NewsModal = ({ news, onClose }) => {
     const displayImage = fullImage || image;
     const displayContent = fullContent || content;
 
+    const formatTextToParagraphs = (text) => {
+        if (!text) return [];
+        // If there are explicit paragraph breaks, keep them
+        if (text.includes('\n\n')) return text.split('\n\n').map(p => p.trim()).filter(Boolean);
+
+        // Normalize whitespace
+        const normalized = text.replace(/\s+/g, ' ').trim();
+
+        // Split into sentences using Bengali danda and common punctuation
+        const sentences = normalized.split(/(?<=[।.!?])\s+/u).map(s => s.trim()).filter(Boolean);
+        if (sentences.length === 0) return [normalized];
+
+        // Group sentences into small paragraphs (2 sentences each)
+        const perParagraph = 2;
+        const paragraphs = [];
+        for (let i = 0; i < sentences.length; i += perParagraph) {
+            paragraphs.push(sentences.slice(i, i + perParagraph).join(' '));
+        }
+
+        // Further split overly long paragraphs by character length
+        const final = [];
+        paragraphs.forEach(p => {
+            if (p.length > 800) {
+                for (let i = 0; i < p.length; i += 500) final.push(p.slice(i, i + 500).trim());
+            } else final.push(p);
+        });
+
+        return final.map(p => p.trim()).filter(Boolean);
+    };
+
     // Prepare news object with full image for ShareCard
     const newsWithImage = {
         ...news,
         image: displayImage
     };
+
+    const descriptionStyle = { fontSize: fontSize + 'px', lineHeight: 1.9 };
+    const displayContentHtml = fullContentHtml || news.contentHtml || null;
+
+    const [sanitizedHtml, setSanitizedHtml] = useState(null);
+
+    useEffect(() => {
+        let mounted = true;
+        if (!displayContentHtml) {
+            setSanitizedHtml(null);
+            return;
+        }
+
+        // dynamic import to avoid Vite static import resolution issues
+        (async () => {
+            try {
+                const mod = await import('dompurify');
+                const purify = mod.default || mod;
+                const clean = purify.sanitize(displayContentHtml, { ADD_ATTR: ['loading', 'decoding'] });
+                if (mounted) setSanitizedHtml(clean);
+            } catch (e) {
+                if (mounted) setSanitizedHtml(displayContentHtml);
+            }
+        })();
+
+        return () => { mounted = false; };
+    }, [displayContentHtml]);
 
     return (
         <>
@@ -120,15 +185,25 @@ const NewsModal = ({ news, onClose }) => {
 
                     <div className="modal-body">
                         <div className="modal-meta">
-                            <span className="modal-source" style={{ backgroundColor: sourceColor }}>
-                                {source}
-                            </span>
-                            <span className="modal-category">{category}</span>
-                            <span className="modal-date">
-                                <Clock size={14} />
-                                {formatDate(pubDate)}
-                            </span>
-                        </div>
+                                <span className="modal-source" style={{ backgroundColor: sourceColor }}>
+                                    {source}
+                                </span>
+
+                                <div className="font-controls">
+                                    <button className="font-btn" onClick={() => setFontSize(s => Math.max(12, s - 1))} title="ছোট টেক্সট">
+                                        <Minus size={14} />
+                                    </button>
+                                    <button className="font-btn" onClick={() => setFontSize(s => Math.min(28, s + 1))} title="বড় টেক্সট">
+                                        <Plus size={14} />
+                                    </button>
+                                </div>
+
+                                <span className="modal-category">{category}</span>
+                                <span className="modal-date">
+                                    <Clock size={14} />
+                                    {formatDate(pubDate)}
+                                </span>
+                            </div>
 
                         <h2 className="modal-title">{title}</h2>
 
@@ -138,10 +213,17 @@ const NewsModal = ({ news, onClose }) => {
                                 <span>সম্পূর্ণ খবর লোড হচ্ছে...</span>
                             </div>
                         ) : (
-                            <div className="modal-description">
-                                {displayContent.split('\n\n').map((paragraph, index) => (
-                                    paragraph.trim() && <p key={index}>{paragraph.trim()}</p>
-                                ))}
+                            <div className="modal-description" style={descriptionStyle}>
+                                {sanitizedHtml ? (
+                                    <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+                                ) : displayContentHtml ? (
+                                    // show raw HTML if sanitizer not ready
+                                    <div dangerouslySetInnerHTML={{ __html: displayContentHtml }} />
+                                ) : (
+                                    formatTextToParagraphs(displayContent).map((paragraph, index) => (
+                                        paragraph && <p key={index}>{paragraph}</p>
+                                    ))
+                                )}
                             </div>
                         )}
 

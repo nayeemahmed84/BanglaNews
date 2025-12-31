@@ -144,17 +144,43 @@ const extractArticleContent = (html, sourceId) => {
 export const scrapeArticle = async (url, sourceId) => {
     try {
         console.log(`📄 Scraping article from: ${url}`);
-
         const html = await fetchWithProxy(url);
         if (!html) {
             console.warn('Failed to fetch article');
             return null;
         }
 
-        const result = extractArticleContent(html, sourceId);
+        // Try Readability via dynamic import first (better quality extraction)
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const mod = await import('@mozilla/readability');
+            if (mod && mod.Readability) {
+                try {
+                    const articleDoc = doc.cloneNode(true);
+                    const reader = new mod.Readability(articleDoc);
+                    const parsed = reader.parse();
+                    if (parsed && parsed.content && parsed.content.length > 200) {
+                        return {
+                            content: (parsed.textContent || parsed.excerpt || '').trim(),
+                            contentHtml: parsed.content,
+                            images: parsed.byline ? [] : [],
+                            image: parsed.lead_image_url || null
+                        };
+                    }
+                } catch (e) {
+                    // fall through to heuristics
+                    console.warn('Readability parse failed, falling back to heuristics', e);
+                }
+            }
+        } catch (e) {
+            // dynamic import or parse failed; continue to heuristic extractor
+        }
 
-        if (result.content && result.content.length > 100) {
-            console.log(`✓ Scraped ${result.content.length} characters`);
+        // Fallback: heuristic extractor
+        const result = extractArticleContent(html, sourceId);
+        if (result && result.content && result.content.length > 100) {
+            console.log(`✓ Scraped ${result.content.length} characters (heuristic)`);
             return result;
         }
 

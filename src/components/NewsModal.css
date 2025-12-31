@@ -84,6 +84,31 @@
     margin-bottom: 1rem;
 }
 
+.font-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+}
+
+.font-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--border);
+    color: var(--text-main);
+    border: none;
+    cursor: pointer;
+}
+
+.font-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm, 0 4px 8px rgba(0,0,0,0.06));
+}
+
 .modal-source {
     color: white;
     padding: 4px 12px;
