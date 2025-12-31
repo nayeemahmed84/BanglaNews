@@ -23,30 +23,24 @@
 }
 
 
-.new-badge {
+.left-badge {
     position: absolute;
     top: 10px;
-    right: 10px;
-    background: #16a34a;
+    left: 10px;
     color: white;
     padding: 4px 8px;
     border-radius: 16px;
     font-size: 0.75rem;
     font-weight: 700;
-    z-index: 6;
+    z-index: 8;
 }
 
-.read-badge {
-    position: absolute;
-    top: 10px;
-    left: 10px;
+.left-badge.new {
+    background: #16a34a;
+}
+
+.left-badge.read {
     background: rgba(0,0,0,0.75);
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: 16px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    z-index: 7;
 }
 
 .card-image img {

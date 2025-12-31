@@ -94,8 +94,8 @@ function App() {
           });
 
           if (freshCache.length > 0) {
-            // Mark cached items so UI can style them
-            const marked = freshCache.map(item => ({ ...item, isCached: true, isNew: false }));
+            // Mark cached items so UI can style them and preserve any existing `isNew` flags
+            const marked = freshCache.map(item => ({ ...item, isCached: true, isNew: item.isNew ?? false }));
             // Ensure global sorting by pubDate
             marked.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
             setAllNews(marked);
@@ -127,6 +127,7 @@ function App() {
 
         const mergedData = data.map(item => {
           const existing = prevMap.get(item.id);
+          const wasRead = readIds.has(item.id);
 
           return {
             ...item,
@@ -134,8 +135,8 @@ function App() {
             image: existing?.image || item.image,
             // Preserve original pubDate (prevent reset on refresh for homepage items)
             pubDate: existing ? existing.pubDate : item.pubDate,
-            // Mark as new if it wasn't in previous list
-            isNew: !existing,
+            // Preserve previous `isNew` unless the item is read; new items (not existing) are marked new
+            isNew: existing ? (existing.isNew && !wasRead) : (!wasRead),
             // Mark as cached if it existed previously
             isCached: !!existing
           };
