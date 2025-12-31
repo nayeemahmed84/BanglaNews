@@ -14,12 +14,19 @@ const formatDate = (pubDate) => {
     }
 };
 
-const NewsCard = ({ news }) => {
-    const { title, pubDate, image, source, sourceColor, category } = news;
+const NewsCard = ({ news, isRead }) => {
+    const { title, pubDate, image, source, sourceColor, category, isNew, isCached } = news;
+
+    const classes = ["news-card", "fade-in"];
+    if (isRead) classes.push('read');
+    if (isCached) classes.push('cached');
+    if (isNew) classes.push('fresh');
 
     return (
-        <div className="news-card fade-in">
+        <div className={classes.join(' ')}>
             <div className="card-image">
+                {isNew && <div className="new-badge">নতুন</div>}
+                {isCached && !isNew && <div className="cached-badge">ক্যাশ</div>}
                 {image ? (
                     <img src={image} alt={title} loading="lazy" />
                 ) : (

@@ -27,6 +27,14 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [readIds, setReadIds] = useState(() => {
+    try {
+      const saved = localStorage.getItem('read_news_ids');
+      return new Set(saved ? JSON.parse(saved) : []);
+    } catch {
+      return new Set();
+    }
+  });
 
   const loadMoreRef = useCallback(node => {
     if (loading || loadingMore) return;
@@ -73,8 +81,8 @@ function App() {
     if (showLoading) {
       try {
         const cached = localStorage.getItem('news_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
+          if (cached) {
+            const parsed = JSON.parse(cached);
           // Filter items older than 24 hours
           const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
           const freshCache = parsed.filter(item => {
@@ -86,7 +94,11 @@ function App() {
           });
 
           if (freshCache.length > 0) {
-            setAllNews(freshCache);
+            // Mark cached items so UI can style them
+            const marked = freshCache.map(item => ({ ...item, isCached: true, isNew: false }));
+            // Ensure global sorting by pubDate
+            marked.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+            setAllNews(marked);
             setLoading(false);
             setBackgroundRefreshing(true);
           } else {
@@ -107,18 +119,30 @@ function App() {
       const data = await fetchNews();
 
       setAllNews(prevNews => {
-        // Merge existing images with new data to prevent flickering
-        const imageMap = new Map();
+        // Create maps for existing data to preserve state
+        const prevMap = new Map();
         if (Array.isArray(prevNews)) {
-          prevNews.forEach(item => {
-            if (item.image) imageMap.set(item.id, item.image);
-          });
+          prevNews.forEach(item => prevMap.set(item.id, item));
         }
 
-        const mergedData = data.map(item => ({
-          ...item,
-          image: imageMap.get(item.id) || item.image
-        }));
+        const mergedData = data.map(item => {
+          const existing = prevMap.get(item.id);
+
+          return {
+            ...item,
+            // Preserve image if we found one previously
+            image: existing?.image || item.image,
+            // Preserve original pubDate (prevent reset on refresh for homepage items)
+            pubDate: existing ? existing.pubDate : item.pubDate,
+            // Mark as new if it wasn't in previous list
+            isNew: !existing,
+            // Mark as cached if it existed previously
+            isCached: !!existing
+          };
+        });
+
+        // Global sort by pubDate so all sources are interleaved correctly
+        mergedData.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
 
         localStorage.setItem('news_cache', JSON.stringify(mergedData));
 
@@ -233,6 +257,11 @@ function App() {
 
   const handleCardClick = (newsItem) => {
     setSelectedNews(newsItem);
+    if (!readIds.has(newsItem.id)) {
+      const newReadIds = new Set(readIds).add(newsItem.id);
+      setReadIds(newReadIds);
+      localStorage.setItem('read_news_ids', JSON.stringify([...newReadIds]));
+    }
   };
 
   return (
@@ -303,7 +332,7 @@ function App() {
                   onClick={() => handleCardClick(item)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <NewsCard news={item} />
+                  <NewsCard news={item} isRead={readIds.has(item.id)} />
                 </div>
               ))}
             </div>
