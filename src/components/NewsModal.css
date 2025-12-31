@@ -156,6 +156,37 @@
     margin-bottom: 1rem;
 }
 
+/* Ensure in-article images and embeds fit inside the modal and are centered */
+.modal-description img,
+.modal-description video,
+.modal-description iframe,
+.modal-description picture {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1rem auto;
+    box-sizing: border-box;
+}
+
+.modal-description figure {
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.modal-description figcaption {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+}
+
+/* Prevent long inline elements from forcing horizontal scroll */
+.modal-description table,
+.modal-description pre,
+.modal-description code {
+    max-width: 100%;
+    overflow: auto;
+}
+
 .modal-description p:last-child {
     margin-bottom: 0;
 }

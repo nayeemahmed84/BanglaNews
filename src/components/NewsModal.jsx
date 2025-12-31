@@ -20,7 +20,15 @@ const NewsModal = ({ news, onClose }) => {
     const [fullContent, setFullContent] = useState(null);
     const [fullContentHtml, setFullContentHtml] = useState(null);
     const [fullImage, setFullImage] = useState(null);
-    const [fontSize, setFontSize] = useState(16);
+    const [fontSize, setFontSize] = useState(() => {
+        try {
+            const saved = localStorage.getItem('news_font_size');
+            const parsed = saved ? parseInt(saved, 10) : NaN;
+            return Number.isFinite(parsed) ? parsed : 16;
+        } catch (e) {
+            return 16;
+        }
+    });
     const [loading, setLoading] = useState(false);
     const [scraped, setScraped] = useState(false);
     const [showShareCard, setShowShareCard] = useState(false);
@@ -143,6 +151,11 @@ const NewsModal = ({ news, onClose }) => {
     };
 
     const descriptionStyle = { fontSize: fontSize + 'px', lineHeight: 1.9 };
+    useEffect(() => {
+        try {
+            localStorage.setItem('news_font_size', String(fontSize));
+        } catch (e) {}
+    }, [fontSize]);
     const displayContentHtml = fullContentHtml || news.contentHtml || null;
 
     const [sanitizedHtml, setSanitizedHtml] = useState(null);
@@ -189,6 +202,7 @@ const NewsModal = ({ news, onClose }) => {
                                     {source}
                                 </span>
 
+                                <span className="modal-category">{category}</span>
                                 <div className="font-controls">
                                     <button className="font-btn" onClick={() => setFontSize(s => Math.max(12, s - 1))} title="ছোট টেক্সট">
                                         <Minus size={14} />
@@ -197,8 +211,6 @@ const NewsModal = ({ news, onClose }) => {
                                         <Plus size={14} />
                                     </button>
                                 </div>
-
-                                <span className="modal-category">{category}</span>
                                 <span className="modal-date">
                                     <Clock size={14} />
                                     {formatDate(pubDate)}
