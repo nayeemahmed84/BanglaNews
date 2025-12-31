@@ -94,8 +94,8 @@ function App() {
           });
 
           if (freshCache.length > 0) {
-            // Mark cached items so UI can style them and preserve any existing `isNew` flags
-            const marked = freshCache.map(item => ({ ...item, isCached: true, isNew: item.isNew ?? false }));
+            // Mark cached items as cached, but ensure they're not shown as "new" on startup
+            const marked = freshCache.map(item => ({ ...item, isCached: true, isNew: false }));
             // Ensure global sorting by pubDate
             marked.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
             setAllNews(marked);
