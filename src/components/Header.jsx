@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Moon, Sun, Newspaper } from 'lucide-react';
+import { Search, Moon, Sun, Newspaper, Loader, X } from 'lucide-react';
 import './Header.css';
 
-const Header = ({ onSearch, searchQuery }) => {
+const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClearSearch, onHomeClick }) => {
     const [isDark, setIsDark] = useState(() => {
         const savedTheme = localStorage.getItem('theme');
         return savedTheme === 'dark';
@@ -21,7 +21,14 @@ const Header = ({ onSearch, searchQuery }) => {
     return (
         <header className="header">
             <div className="container header-content">
-                <div className="logo-section">
+                <div
+                    className="logo-section"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => { if (typeof onHomeClick === 'function') onHomeClick(); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && typeof onHomeClick === 'function') onHomeClick(); }}
+                    role="button"
+                    tabIndex={0}
+                >
                     <div className="logo-icon">
                         <Newspaper size={28} />
                     </div>
@@ -35,7 +42,22 @@ const Header = ({ onSearch, searchQuery }) => {
                         placeholder="খবর খুঁজুন..."
                         value={searchQuery}
                         onChange={(e) => onSearch(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && typeof onSearchSubmit === 'function') {
+                                onSearchSubmit(e.target.value);
+                            }
+                        }}
                     />
+                    {searchQuery && (
+                        <button className="clear-search" onClick={() => { onSearch(''); if (typeof onClearSearch === 'function') onClearSearch(); }} title="Clear search">
+                            <X size={14} />
+                        </button>
+                    )}
+                    {remoteSearching && (
+                        <span className="remote-searching" title="Remote search running">
+                            <Loader size={14} className="spin" />
+                        </span>
+                    )}
                 </div>
 
                 <button

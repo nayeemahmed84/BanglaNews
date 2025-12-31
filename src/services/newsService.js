@@ -389,7 +389,7 @@ const scrapeHomepage = async (source) => {
   }
 };
 
-const fetchFromRSS = async (source) => {
+const fetchFromRSS = async (source, options = {}) => {
   try {
     const text = await fetchWithProxy(source.url);
 
@@ -432,7 +432,8 @@ const fetchFromRSS = async (source) => {
       let pubDate = new Date(pubDateStr);
       if (isNaN(pubDate.getTime())) pubDate = new Date();
 
-      if (!isWithinDateRange(pubDate)) return;
+      // Skip old items unless allowOld option is set (used for search)
+      if (!options.allowOld && !isWithinDateRange(pubDate)) return;
 
       // Use enhanced extraction
       const image = extractImage(item, text);
@@ -513,4 +514,72 @@ export const fetchNews = async () => {
 
   console.log(`📰 Total news fetched: ${allNews.length}`);
   return allNews.sort((a, b) => b.pubDate - a.pubDate);
+};
+
+// Search across all sources (no date limit) and return items matching `query` in title or content
+export const searchAllSources = async (query) => {
+  if (!query || String(query).trim().length === 0) return [];
+  const q = String(query).toLowerCase().trim();
+
+  const allNews = [];
+
+  for (const source of NEWS_SOURCES) {
+    try {
+      // Fetch RSS with allowOld=true so older items are included
+      const rssItems = await fetchFromRSS(source, { allowOld: true });
+      const rssCount = Array.isArray(rssItems) ? rssItems.length : 0;
+      allNews.push(...(rssItems || []));
+      // Also include homepage-scraped items (they may contain headlines not in RSS)
+      let homeCount = 0;
+      try {
+        const homeItems = await scrapeHomepage(source);
+        homeCount = Array.isArray(homeItems) ? homeItems.length : 0;
+        allNews.push(...(homeItems || []));
+      } catch (e) {
+        console.debug('[searchAllSources] homepage scrape failed for', source.id, e?.message || e);
+      }
+      console.debug(`[searchAllSources] fetched ${rssCount} rss + ${homeCount} home items for`, source.id);
+    } catch (e) {
+      console.warn('Search fetch failed for', source.name, e);
+    }
+    await delay(RATE_LIMIT_DELAY);
+  }
+
+  // Filter by query in title or content
+  const filtered = allNews.filter(item => {
+    try {
+      const text = ((item.title || '') + ' ' + (item.content || '') + ' ' + (item.shortContent || '')).toLowerCase();
+      return text.includes(q);
+    } catch {
+      return false;
+    }
+  });
+
+  // Deduplicate by link
+  const seen = new Set();
+  const unique = [];
+  for (const it of filtered) {
+    const key = it.link || it.id;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(it);
+    }
+  }
+
+  console.debug('[searchAllSources] total fetched', allNews.length, 'matched', unique.length, 'for query', q);
+  if (unique.length > 0) {
+    console.debug('[searchAllSources] sample matches', unique.slice(0,5).map(it => ({ title: it.title, link: it.link, source: it.source })));
+  } else {
+    try {
+      const sample = allNews.slice(0, 10).map(it => ({ title: it.title, link: it.link, source: it.source, contentSnippet: (it.shortContent||'').slice(0,120) }));
+      console.debug('[searchAllSources] NO MATCH - sample fetched items (first 10):', sample);
+      const inLinks = allNews.filter(it => (it.link || '').toLowerCase().includes(q)).slice(0,5).map(it=>({link:it.link, title:it.title}));
+      const inSourceNames = allNews.filter(it => (it.source || '').toLowerCase().includes(q)).slice(0,5).map(it=>it.source);
+      console.debug('[searchAllSources] query found in links (sample):', inLinks);
+      console.debug('[searchAllSources] query found in source names (sample):', inSourceNames);
+    } catch (e) {}
+  }
+
+  unique.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
+  return unique;
 };

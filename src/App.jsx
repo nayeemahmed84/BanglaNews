@@ -3,7 +3,7 @@ import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import NewsCard from './components/NewsCard';
 import NewsModal from './components/NewsModal';
-import { fetchNews } from './services/newsService';
+import { fetchNews, searchAllSources } from './services/newsService';
 import { scrapeImagesForArticles } from './services/imageScraper';
 import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image } from 'lucide-react';
 import './App.css';
@@ -27,6 +27,9 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [remoteSearching, setRemoteSearching] = useState(false);
+  const [remoteResults, setRemoteResults] = useState(null);
+  const [lastRemoteQuery, setLastRemoteQuery] = useState('');
   const [readIds, setReadIds] = useState(() => {
     try {
       const saved = localStorage.getItem('read_news_ids');
@@ -274,10 +277,62 @@ function App() {
     });
   };
 
+  const handleClearSearch = useCallback(() => {
+    setRemoteResults(null);
+    setLastRemoteQuery('');
+    setRemoteSearching(false);
+    setSearchQuery('');
+    // restore local view
+    setFilteredNews(allNews);
+    setPage(1);
+    setHasMore(allNews.length > ITEMS_PER_PAGE);
+  }, [allNews]);
+
+  // Handle search submit (Enter): perform remote search across all sources (no date limit)
+  const handleSearchSubmit = async (query) => {
+    if (!query || String(query).trim().length === 0) return;
+    setRemoteSearching(true);
+    setRemoteResults(null);
+    setLastRemoteQuery(query);
+    try {
+      const results = await searchAllSources(query);
+      setRemoteResults(results);
+      // update filtered/news view to remote results immediately
+      setFilteredNews(results);
+      setPage(1);
+      setHasMore(results.length > ITEMS_PER_PAGE);
+    } catch (e) {
+      console.error('Remote search failed', e);
+    } finally {
+      setRemoteSearching(false);
+    }
+  };
+
+  // Go to homepage: clear search, reset category, close modal, and refresh feed
+  const handleGoHome = useCallback(() => {
+    try {
+      // Clear remote search and input
+      setRemoteResults(null);
+      setLastRemoteQuery('');
+      setRemoteSearching(false);
+      setSearchQuery('');
+
+      // Reset category and modal
+      setSelectedCategory('All');
+      setSelectedNews(null);
+
+      // Reload latest news and scroll to top
+      loadNews(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      console.warn('handleGoHome error', e);
+    }
+  }, [loadNews]);
+
 
   return (
     <div className="app">
-      <Header onSearch={setSearchQuery} searchQuery={searchQuery} />
+      <Header onSearch={setSearchQuery} searchQuery={searchQuery} onHomeClick={handleGoHome} remoteSearching={remoteSearching} onSearchSubmit={handleSearchSubmit} onClearSearch={handleClearSearch} />
 
       <FilterBar
         selectedCategory={selectedCategory}
