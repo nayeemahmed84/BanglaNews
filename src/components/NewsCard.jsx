@@ -25,8 +25,8 @@ const NewsCard = ({ news, isRead }) => {
     return (
         <div className={classes.join(' ')}>
             <div className="card-image">
+                {isRead && <div className="read-badge">পড়া হয়েছে</div>}
                 {isNew && <div className="new-badge">নতুন</div>}
-                {isCached && !isNew && <div className="cached-badge">ক্যাশ</div>}
                 {image ? (
                     <img src={image} alt={title} loading="lazy" />
                 ) : (

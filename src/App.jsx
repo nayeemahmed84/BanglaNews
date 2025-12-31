@@ -257,12 +257,22 @@ function App() {
 
   const handleCardClick = (newsItem) => {
     setSelectedNews(newsItem);
+
+    // Mark as read (persist read ids)
     if (!readIds.has(newsItem.id)) {
       const newReadIds = new Set(readIds).add(newsItem.id);
       setReadIds(newReadIds);
       localStorage.setItem('read_news_ids', JSON.stringify([...newReadIds]));
     }
+
+    // Also update the article flags in-memory so UI updates immediately
+    setAllNews(prev => {
+      const updated = prev.map(a => a.id === newsItem.id ? { ...a, isNew: false, isCached: true } : a);
+      try { localStorage.setItem('news_cache', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
   };
+
 
   return (
     <div className="app">

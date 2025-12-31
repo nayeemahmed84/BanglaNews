@@ -22,30 +22,31 @@
     background: var(--border);
 }
 
+
 .new-badge {
     position: absolute;
     top: 10px;
-    left: 10px;
-    background: #ef4444;
+    right: 10px;
+    background: #16a34a;
     color: white;
     padding: 4px 8px;
     border-radius: 16px;
     font-size: 0.75rem;
     font-weight: 700;
-    z-index: 4;
+    z-index: 6;
 }
 
-.cached-badge {
+.read-badge {
     position: absolute;
     top: 10px;
     left: 10px;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0,0,0,0.75);
     color: #fff;
     padding: 4px 8px;
     border-radius: 16px;
     font-size: 0.75rem;
     font-weight: 700;
-    z-index: 4;
+    z-index: 7;
 }
 
 .card-image img {
@@ -130,14 +131,11 @@
 }
 
 /* Cached items have subtle border and lower contrast */
-.news-card.cached {
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.04);
-}
-
-/* Freshly found items after a refresh get a gentle glow */
 .news-card.fresh {
-    box-shadow: 0 6px 18px rgba(34,197,94,0.06);
-    border-color: rgba(34,197,94,0.35);
+    /* visually distinguish newly found items: green accent and subtle background */
+    border-left: 6px solid #10b981;
+    background: linear-gradient(90deg, rgba(16,185,129,0.03), transparent 30%);
+    transition: box-shadow 0.25s ease, transform 0.18s ease;
 }
 
 .card-title a:hover {
