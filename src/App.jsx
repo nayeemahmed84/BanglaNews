@@ -84,8 +84,8 @@ function App() {
     if (showLoading) {
       try {
         const cached = localStorage.getItem('news_cache');
-          if (cached) {
-            const parsed = JSON.parse(cached);
+        if (cached) {
+          const parsed = JSON.parse(cached);
           // Filter items older than 24 hours
           const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
           const freshCache = parsed.filter(item => {
@@ -216,9 +216,13 @@ function App() {
     }
 
     setFilteredNews(result);
+  }, [searchQuery, selectedCategory, allNews]);
+
+  // Handle pagination reset on filter change
+  useEffect(() => {
     setPage(1);
     setHasMore(true);
-  }, [searchQuery, selectedCategory, allNews]);
+  }, [searchQuery, selectedCategory]);
 
   // Paginate displayed news
   useEffect(() => {
@@ -237,27 +241,6 @@ function App() {
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  // Scroll event listener as fallback
-  useEffect(() => {
-    const handleScroll = () => {
-      if (loading || loadingMore || !hasMore) return;
-
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = document.documentElement.clientHeight;
-
-      if (scrollTop + clientHeight >= scrollHeight - 500) {
-        setLoadingMore(true);
-        setTimeout(() => {
-          setPage(prev => prev + 1);
-          setLoadingMore(false);
-        }, 300);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [loading, loadingMore, hasMore]);
 
   const handleCardClick = (newsItem) => {
     setSelectedNews(newsItem);
@@ -272,7 +255,7 @@ function App() {
     // Also update the article flags in-memory so UI updates immediately
     setAllNews(prev => {
       const updated = prev.map(a => a.id === newsItem.id ? { ...a, isNew: false, isCached: true } : a);
-      try { localStorage.setItem('news_cache', JSON.stringify(updated)); } catch {}
+      try { localStorage.setItem('news_cache', JSON.stringify(updated)); } catch { }
       return updated;
     });
   };

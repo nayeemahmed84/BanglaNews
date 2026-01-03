@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Moon, Sun, Newspaper, Loader, X } from 'lucide-react';
+import { Search, Moon, Sun, Newspaper, Loader, X, Languages } from 'lucide-react';
 import './Header.css';
 
 const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClearSearch, onHomeClick }) => {
@@ -18,7 +18,7 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
         }
     }, [isDark]);
 
-    const [phoneticMode, setPhoneticMode] = useState(false);
+    const [phoneticMode, setPhoneticMode] = useState(true);
     const rawBufferRef = React.useRef('');
     const translitFnRef = React.useRef(null);
 
@@ -59,7 +59,7 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
                     });
                 };
 
-                    try {
+                try {
                     // local vendor copy (served from public/vendor)
                     const local = '/vendor/avro-lib-v1.1.4.min.js';
                     try {
@@ -188,18 +188,16 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
                     )}
                     {/* Transliterate current Latin query to Bangla (phonetic) */}
                     <button className={`transliterate-btn ${phoneticMode ? 'active' : ''}`} onClick={() => {
-                        // Toggle phonetic mode
                         const next = !phoneticMode;
                         setPhoneticMode(next);
                         if (!next) {
-                            // leaving phonetic mode: clear raw buffer
-                            rawBufferRef.current = '';
-                        } else {
-                            // entering phonetic mode: seed buffer with latin approximation if possible
                             rawBufferRef.current = '';
                         }
                     }} title="ফোনেটিক টাইপিং চালু/বন্ধ">
-                        অ→A
+                        <div className="btn-content">
+                            <Languages size={18} />
+                            <span className="btn-label">{phoneticMode ? 'অ→A' : 'A→A'}</span>
+                        </div>
                     </button>
                     {remoteSearching && (
                         <span className="remote-searching" title="Remote search running">
@@ -216,7 +214,7 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
                     {isDark ? <Sun size={24} /> : <Moon size={24} />}
                 </button>
             </div>
-        </header>
+        </header >
     );
 };
 
@@ -232,26 +230,26 @@ function transliterateLatinToBangla(input) {
     };
 
     const cons = {
-        'k':'ক','g':'গ','c':'ক','j':'জ','t':'ত','d':'দ','n':'ন','p':'প','b':'ব','m':'ম','y':'য','r':'র','l':'ল','s':'স','h':'হ','f':'ফ','v':'ভ','z':'জ','q':'ক','x':'ক্স','w':'ও'
+        'k': 'ক', 'g': 'গ', 'c': 'ক', 'j': 'জ', 't': 'ত', 'd': 'দ', 'n': 'ন', 'p': 'প', 'b': 'ব', 'm': 'ম', 'y': 'য', 'r': 'র', 'l': 'ল', 's': 'স', 'h': 'হ', 'f': 'ফ', 'v': 'ভ', 'z': 'জ', 'q': 'ক', 'x': 'ক্স', 'w': 'ও'
     };
 
-    const vowelSign = {'a':'া','i':'ি','u':'ু','e':'ে','o':'ো'};
-    const vowelIndep = {'a':'অ','i':'ই','u':'উ','e':'এ','o':'ও'};
+    const vowelSign = { 'a': 'া', 'i': 'ি', 'u': 'ু', 'e': 'ে', 'o': 'ো' };
+    const vowelIndep = { 'a': 'অ', 'i': 'ই', 'u': 'উ', 'e': 'এ', 'o': 'ও' };
 
     let out = '';
-    for (let i=0;i<s.length;i++) {
+    for (let i = 0; i < s.length; i++) {
         // try digraphs
-        const two = s.slice(i,i+2);
+        const two = s.slice(i, i + 2);
         if (digraphs[two]) { out += digraphs[two]; i++; continue; }
 
         const ch = s[i];
         if (ch === ' ') { out += ' '; continue; }
         if (vowelIndep[ch]) {
             // if previous is consonant and we might want vowel sign, naive approach: use independent if at word start
-            if (i===0 || s[i-1] === ' ') { out += vowelIndep[ch]; }
+            if (i === 0 || s[i - 1] === ' ') { out += vowelIndep[ch]; }
             else {
                 // attach vowel sign to previous consonant if possible
-                if (vowelSign[ch] && out.length>0) {
+                if (vowelSign[ch] && out.length > 0) {
                     out += vowelSign[ch];
                 } else {
                     out += vowelIndep[ch];
@@ -262,7 +260,7 @@ function transliterateLatinToBangla(input) {
 
         if (cons[ch]) {
             // check next char is vowel to attach sign
-            const next = s[i+1];
+            const next = s[i + 1];
             if (vowelSign[next]) {
                 out += cons[ch] + vowelSign[next];
                 i++; // skip vowel
@@ -277,5 +275,5 @@ function transliterateLatinToBangla(input) {
     }
 
     // Basic cleanup: replace multiple spaces
-    return out.replace(/\s{2,}/g,' ').trim();
+    return out.replace(/\s{2,}/g, ' ').trim();
 }

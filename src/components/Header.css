@@ -87,6 +87,59 @@
     background: var(--border);
 }
 
+.transliterate-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    margin-left: 8px;
+    margin-right: 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.transliterate-btn:hover {
+    background: rgba(var(--primary-rgb), 0.05);
+    color: var(--primary);
+    transform: translateY(-1px);
+}
+
+.transliterate-btn.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
+}
+
+.transliterate-btn.active:hover {
+    box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+
+.btn-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.remote-searching {
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    color: var(--primary);
+}
+
 @media (max-width: 640px) {
     .logo-section h1 {
         display: none;
