@@ -68,7 +68,9 @@ const JUNK_SELECTORS = [
     '.jeg_share_top_container', '.jeg_share_bottom_container', // Social sharing
     '.jeg_post_tags', '.jeg_prevnext_post', '.jeg_related_post', // Post meta/nav
     '.jeg_autonext_container', '#jnews_audio_player', // Infinite scroll / Audio player
-    '.jeg_breadcrumbs' // Navigation
+    '.jeg_breadcrumbs', // Navigation
+    '.well.well-sm', // JagoNews recruitment block
+    '.css-19g7urm' // BBC image credit class
 ];
 
 // Clean content from common Bengali noise and specific clutter
@@ -96,8 +98,8 @@ const postProcessContent = (html, sourceId) => {
         /বিবিসি বাংলায় আরো পড়তে পারেন:?/gi,
         /আরো পড়ুন:?/gi,
         /বিবিসি বাংলার অন্যান্য খবর:?/gi,
-        /[এ-য়]+\/[এ-য়]+/g, // JagoNews reporter/editor initials (pair)
-        /\s[এ-য়]{2,3}(?=।|\s|<|$)/g // JagoNews standalone initials before punctuation or tags
+        /[এ-য়]+\s*\/\s*[এ-য়]+/g, // JagoNews reporter/editor initials (pair like এসএনআর/এএসএম)
+        /\b[এ-য়]{2,3}(?=।|\s*<|$|\s)/g // JagoNews standalone initials (like এমআর)
     ];
 
     let clean = html;
@@ -151,7 +153,36 @@ const extractArticleContent = (html, sourceId) => {
     for (const selector of [...siteSelectors, ...genericSelectors]) {
         const el = doc.querySelector(selector);
         if (el && el.textContent.trim().length > 200) {
-            contentHtml = el.innerHTML;
+            // Special handling for Prothom Alo photo stories / multi-image articles
+            const galleryItems = el.querySelectorAll('figure.qt-figure');
+            if (galleryItems.length > 2) {
+                // It's a photo story, let's make sure we get all these blocks
+                let galleryHtml = '';
+                galleryItems.forEach(item => {
+                    // Clean the item but keep its structure
+                    const img = item.querySelector('img');
+                    const caption = item.querySelector('figcaption');
+                    if (img) {
+                        const src = img.getAttribute('src') || img.getAttribute('data-src');
+                        const capText = caption ? caption.innerHTML : '';
+                        galleryHtml += `
+                            <figure class="qt-figure" style="margin-bottom: 2rem; border-bottom: 1px solid #eee; padding-bottom: 1rem;">
+                                <img src="${src}" style="width: 100%; height: auto; border-radius: 8px;" />
+                                ${capText ? `<figcaption style="margin-top: 0.5rem; font-style: italic; color: #666;">${capText}</figcaption>` : ''}
+                            </figure>
+                        `;
+                    }
+                });
+
+                // If we found a substantial gallery, use it or prepend it
+                if (galleryHtml.length > 500) {
+                    contentHtml = galleryHtml + el.innerHTML;
+                } else {
+                    contentHtml = el.innerHTML;
+                }
+            } else {
+                contentHtml = el.innerHTML;
+            }
             break;
         }
     }
@@ -233,8 +264,20 @@ const deduplicateImages = (html, leadImageUrl, sourceId) => {
 
         if (isMatch) {
             // Also try to remove the parent figure/div if it's just an image wrapper
-            const parent = img.closest('figure, .image-container, .wp-block-image');
+            const parent = img.closest('figure, .image-container, .wp-block-image, .css-1qn0xuy');
+
+            // DON'T deduplicate if it's part of an intentional gallery (like Prothom Alo's qt-figure)
+            // unless it's the very first image and we've already shown it as a lead image
+            if (parent && parent.classList.contains('qt-figure') && index > 0) {
+                return;
+            }
+
             if (parent) {
+                // If it's a BBC figure, it might have a credit after it
+                const next = parent.nextElementSibling;
+                if (next && (next.classList.contains('css-19g7urm') || next.querySelector('.css-19g7urm'))) {
+                    next.remove();
+                }
                 parent.remove();
             } else {
                 img.remove();
