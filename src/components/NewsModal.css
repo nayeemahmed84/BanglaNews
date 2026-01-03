@@ -106,7 +106,7 @@
 
 .font-btn:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-sm, 0 4px 8px rgba(0,0,0,0.06));
+    box-shadow: var(--shadow-sm, 0 4px 8px rgba(0, 0, 0, 0.06));
 }
 
 .modal-source {
@@ -153,7 +153,29 @@
 }
 
 .modal-description p {
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.modal-description strong,
+.modal-description b {
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.modal-description ul,
+.modal-description ol {
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
+}
+
+.modal-description li {
+    margin-bottom: 0.5rem;
+}
+
+.modal-description a {
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--primary);
 }
 
 /* Ensure in-article images and embeds fit inside the modal and are centered */

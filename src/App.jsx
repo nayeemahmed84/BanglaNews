@@ -211,6 +211,7 @@ function App() {
     if (searchQuery) {
       result = result.filter((item) =>
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.content && item.content.toLowerCase().includes(searchQuery.toLowerCase())) ||
         item.source.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
