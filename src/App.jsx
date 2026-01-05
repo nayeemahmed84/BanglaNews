@@ -3,6 +3,7 @@ import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import NewsCard from './components/NewsCard';
 import NewsModal from './components/NewsModal';
+import Settings from './components/Settings';
 import { fetchNews, searchAllSources } from './services/newsService';
 import { scrapeImagesForArticles } from './services/imageScraper';
 import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image } from 'lucide-react';
@@ -11,7 +12,34 @@ import './App.css';
 const AUTO_REFRESH_INTERVAL = 300000; // 5 minutes
 const ITEMS_PER_PAGE = 20;
 
+
+const DEFAULT_SETTINGS = {
+  enabledSources: [
+    'jago-news', 'risingbd', 'prothom-alo', 'bdnews24',
+    'somoy-tv', 'ntv', 'channel-i', 'daily-star', 'bbc-bangla'
+  ],
+  theme: 'light',
+  fontSize: 16,
+  viewDensity: 'comfortable',
+  autoRefresh: true,
+  refreshInterval: 300000,
+  itemsPerPage: 20,
+  defaultCategory: 'All',
+  trackReadArticles: true
+};
+
 function App() {
+  // Settings state
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('app_settings');
+      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  });
+  const [showSettings, setShowSettings] = useState(false);
+
   const [allNews, setAllNews] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
   const [displayedNews, setDisplayedNews] = useState([]);
@@ -21,9 +49,9 @@ function App() {
   const [backgroundRefreshing, setBackgroundRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState(settings.defaultCategory);
   const [selectedNews, setSelectedNews] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(settings.autoRefresh);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -38,6 +66,25 @@ function App() {
       return new Set();
     }
   });
+
+  // Handle settings changes
+  const handleSettingsChange = useCallback((newSettings) => {
+    setSettings(newSettings);
+    localStorage.setItem('app_settings', JSON.stringify(newSettings));
+
+    // Apply settings immediately
+    setAutoRefresh(newSettings.autoRefresh);
+    setSelectedCategory(newSettings.defaultCategory);
+
+    // Apply theme
+    if (newSettings.theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', 'light');
+    }
+  }, []);
 
   const loadMoreRef = useCallback(node => {
     if (loading || loadingMore) return;
@@ -121,6 +168,11 @@ function App() {
     try {
       const data = await fetchNews();
 
+      // Filter by enabled sources
+      const filteredBySource = data.filter(item =>
+        settings.enabledSources.includes(item.sourceId)
+      );
+
       setAllNews(prevNews => {
         // Create maps for existing data to preserve state
         const prevMap = new Map();
@@ -128,7 +180,7 @@ function App() {
           prevNews.forEach(item => prevMap.set(item.id, item));
         }
 
-        const mergedData = data.map(item => {
+        const mergedData = filteredBySource.map(item => {
           const existing = prevMap.get(item.id);
           const wasRead = readIds.has(item.id);
 
@@ -185,7 +237,7 @@ function App() {
     const scheduleRefresh = () => {
       // Add random jitter between 0-60 seconds to appear more human
       const jitter = Math.floor(Math.random() * 60000);
-      const delay = AUTO_REFRESH_INTERVAL + jitter;
+      const delay = settings.refreshInterval + jitter;
 
       console.log(`Next refresh scheduled in ${Math.round(delay / 1000)}s`);
 
@@ -198,7 +250,7 @@ function App() {
     scheduleRefresh();
 
     return () => clearTimeout(timeoutId);
-  }, [autoRefresh, loadNews]);
+  }, [autoRefresh, loadNews, settings.refreshInterval]);
 
   // Filter news when category or search changes
   useEffect(() => {
@@ -227,11 +279,11 @@ function App() {
 
   // Paginate displayed news
   useEffect(() => {
-    const endIndex = page * ITEMS_PER_PAGE;
+    const endIndex = page * settings.itemsPerPage;
     const itemsToShow = filteredNews.slice(0, endIndex);
     setDisplayedNews(itemsToShow);
     setHasMore(endIndex < filteredNews.length);
-  }, [filteredNews, page]);
+  }, [filteredNews, page, settings.itemsPerPage]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -246,8 +298,8 @@ function App() {
   const handleCardClick = (newsItem) => {
     setSelectedNews(newsItem);
 
-    // Mark as read (persist read ids)
-    if (!readIds.has(newsItem.id)) {
+    // Mark as read (persist read ids) only if tracking is enabled
+    if (settings.trackReadArticles && !readIds.has(newsItem.id)) {
       const newReadIds = new Set(readIds).add(newsItem.id);
       setReadIds(newReadIds);
       localStorage.setItem('read_news_ids', JSON.stringify([...newReadIds]));
@@ -269,8 +321,8 @@ function App() {
     // restore local view
     setFilteredNews(allNews);
     setPage(1);
-    setHasMore(allNews.length > ITEMS_PER_PAGE);
-  }, [allNews]);
+    setHasMore(allNews.length > settings.itemsPerPage);
+  }, [allNews, settings.itemsPerPage]);
 
   // Handle search submit (Enter): perform remote search across all sources (no date limit)
   const handleSearchSubmit = async (query) => {
@@ -284,7 +336,7 @@ function App() {
       // update filtered/news view to remote results immediately
       setFilteredNews(results);
       setPage(1);
-      setHasMore(results.length > ITEMS_PER_PAGE);
+      setHasMore(results.length > settings.itemsPerPage);
     } catch (e) {
       console.error('Remote search failed', e);
     } finally {
@@ -316,7 +368,15 @@ function App() {
 
   return (
     <div className="app">
-      <Header onSearch={setSearchQuery} searchQuery={searchQuery} onHomeClick={handleGoHome} remoteSearching={remoteSearching} onSearchSubmit={handleSearchSubmit} onClearSearch={handleClearSearch} />
+      <Header
+        onSearch={setSearchQuery}
+        searchQuery={searchQuery}
+        onHomeClick={handleGoHome}
+        remoteSearching={remoteSearching}
+        onSearchSubmit={handleSearchSubmit}
+        onClearSearch={handleClearSearch}
+        onSettingsClick={() => setShowSettings(true)}
+      />
 
       <FilterBar
         selectedCategory={selectedCategory}
@@ -375,7 +435,7 @@ function App() {
           </div>
         ) : displayedNews.length > 0 ? (
           <>
-            <div className="news-grid">
+            <div className={`news-grid view-density-${settings.viewDensity}`}>
               {displayedNews.map((item, index) => (
                 <div
                   key={item.id + '-' + index}
@@ -417,6 +477,15 @@ function App() {
 
       {selectedNews && (
         <NewsModal news={selectedNews} onClose={() => setSelectedNews(null)} />
+      )}
+
+      {showSettings && (
+        <Settings
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+          currentSettings={settings}
+          onSettingsChange={handleSettingsChange}
+        />
       )}
     </div>
   );

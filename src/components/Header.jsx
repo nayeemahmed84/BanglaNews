@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Moon, Sun, Newspaper, Loader, X, Languages } from 'lucide-react';
+import { Search, Moon, Sun, Newspaper, Loader, X, Languages, Settings as SettingsIcon } from 'lucide-react';
 import './Header.css';
 
-const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClearSearch, onHomeClick }) => {
+const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClearSearch, onHomeClick, onSettingsClick }) => {
     const [isDark, setIsDark] = useState(() => {
         const savedTheme = localStorage.getItem('theme');
         return savedTheme === 'dark';
@@ -206,13 +206,22 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
                     )}
                 </div>
 
-                <button
-                    className="theme-toggle"
-                    onClick={() => setIsDark(!isDark)}
-                    aria-label="Toggle theme"
-                >
-                    {isDark ? <Sun size={24} /> : <Moon size={24} />}
-                </button>
+                <div className="header-actions">
+                    <button
+                        className="theme-toggle"
+                        onClick={() => setIsDark(!isDark)}
+                        aria-label="Toggle theme"
+                    >
+                        {isDark ? <Sun size={24} /> : <Moon size={24} />}
+                    </button>
+                    <button
+                        className="settings-btn"
+                        onClick={onSettingsClick}
+                        aria-label="Settings"
+                    >
+                        <SettingsIcon size={24} />
+                    </button>
+                </div>
             </div>
         </header >
     );

@@ -76,14 +76,28 @@
     box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
 }
 
-.theme-toggle {
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.theme-toggle,
+.settings-btn {
     padding: 8px;
     border-radius: 10px;
     color: var(--text-main);
     transition: background-color 0.2s ease;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.settings-btn:hover {
     background: var(--border);
 }
 

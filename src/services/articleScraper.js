@@ -99,7 +99,11 @@ const postProcessContent = (html, sourceId) => {
         /আরো পড়ুন:?/gi,
         /বিবিসি বাংলার অন্যান্য খবর:?/gi,
         /[এ-য়]+\s*\/\s*[এ-য়]+/g, // JagoNews reporter/editor initials (pair like এসএনআর/এএসএম)
-        /\b[এ-য়]{2,3}(?=।|\s*<|$|\s)/g // JagoNews standalone initials (like এমআর)
+        /\b[এ-য়]{2,3}(?=।|\s*<|$|\s)/g, // JagoNews standalone initials (like এমআর)
+        /প্রকাশ:?\s*[০-৯০-৯\-\/:\s]+/gi, // bdnews24 published timestamp
+        /আপডেট:?\s*[০-৯০-৯\-\/:\s]+/gi, // bdnews24 updated timestamp
+        /Published:?\s*[0-9\-\/:\s]+/gi, // bdnews24 English published
+        /Updated:?\s*[0-9\-\/:\s]+/gi // bdnews24 English updated
     ];
 
     let clean = html;
@@ -250,8 +254,8 @@ const deduplicateImages = (html, leadImageUrl, sourceId) => {
         const srcSig = getImageSignature(src);
         const dataSig = getImageSignature(dataSrc);
 
-        // Special rule for BBC Bangla: remove the first image/figure which is usually redundant
-        const isBbcFirst = sourceId === 'bbc-bangla' && index === 0;
+        // Special rule for BBC Bangla and Channel i: remove the first image/figure which is usually redundant
+        const isBbcFirst = (sourceId === 'bbc-bangla' || sourceId === 'channel-i') && index === 0;
 
         // Deduplicate if:
         // 1. Exact match
