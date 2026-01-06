@@ -8,7 +8,7 @@ const CORS_PROXIES = [
 const RATE_LIMIT_DELAY = 800;
 const MAX_AGE_DAYS = 3;
 
-const NEWS_SOURCES = [
+export const DEFAULT_SOURCES = [
   {
     name: 'জাগো নিউজ ২৪',
     id: 'jago-news',
@@ -74,12 +74,103 @@ const NEWS_SOURCES = [
   }
 ];
 
+// Helper to discover RSS feed from a URL
+export const discoverSource = async (initialUrl) => {
+  let url = initialUrl;
+  if (!url.startsWith('http')) url = 'https://' + url;
+
+  try {
+    const html = await fetchWithProxy(url);
+    if (!html) throw new Error('Could not access site');
+
+    // 1. Check for RSS link tags
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const rssLink = doc.querySelector('link[type="application/rss+xml"], link[type="application/atom+xml"]');
+
+    let rssUrl = null;
+    if (rssLink) {
+      rssUrl = rssLink.getAttribute('href');
+      // Fix relative URL
+      if (rssUrl && !rssUrl.startsWith('http')) {
+        const origin = new URL(url).origin;
+        rssUrl = new URL(rssUrl, origin).href;
+      }
+    }
+
+    // 2. If no tag, try common paths
+    if (!rssUrl) {
+      const commonPaths = ['/rss', '/feed', '/rss.xml', '/feed.xml'];
+      const origin = new URL(url).origin;
+
+      for (const path of commonPaths) {
+        try {
+          const testUrl = origin + path;
+          const testHtml = await fetchWithProxy(testUrl);
+          if (testHtml && (testHtml.includes('<rss') || testHtml.includes('<feed') || testHtml.includes('<channel'))) {
+            rssUrl = testUrl;
+            break;
+          }
+        } catch (e) { continue; }
+      }
+    }
+
+    // Get site title
+    let name = doc.querySelector('title')?.textContent?.split(/[|-]/)[0]?.trim() || new URL(url).hostname;
+
+    return {
+      name,
+      id: new URL(url).hostname.replace(/www\.|com|org|net/g, '').replace(/\./g, '-'),
+      url: rssUrl, // Might be null if no RSS found
+      homepage: url,
+      color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Random color
+    };
+
+  } catch (e) {
+    throw new Error('Failed to analyze site: ' + e.message);
+  }
+};
+
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const isWithinDateRange = (date) => {
   const now = new Date();
   const maxAge = new Date(now.getTime() - (MAX_AGE_DAYS * 24 * 60 * 60 * 1000));
   return date >= maxAge;
+};
+
+const BANGLA_DIGITS = { '০': 0, '১': 1, '২': 2, '৩': 3, '৪': 4, '৫': 5, '৬': 6, '৭': 7, '৮': 8, '৯': 9 };
+const BANGLA_MONTHS = {
+  'জানুয়ারি': 'Jan', 'ফেব্রুয়ারি': 'Feb', 'মার্চ': 'Mar', 'এপ্রিল': 'Apr',
+  'মে': 'May', 'জুন': 'Jun', 'জুলাই': 'Jul', 'আগস্ট': 'Aug',
+  'সেপ্টেম্বর': 'Sep', 'অক্টোবর': 'Oct', 'নভেম্বর': 'Nov', 'ডিসেম্বর': 'Dec',
+  'জানু': 'Jan', 'ফেব্রু': 'Feb', 'সেপ্টে': 'Sep', 'অক্টো': 'Oct', 'নভে': 'Nov', 'ডিসে': 'Dec'
+};
+
+const parseCustomDate = (dateStr) => {
+  if (!dateStr) return null;
+
+  try {
+    let s = String(dateStr).trim();
+
+    // 1. Replace Bangla numerals
+    s = s.replace(/[০-৯]/g, m => BANGLA_DIGITS[m]);
+
+    // 2. Replace Bangla months
+    for (const [bn, en] of Object.entries(BANGLA_MONTHS)) {
+      s = s.replace(new RegExp(bn, 'gi'), en);
+    }
+
+    // 3. Remove common extraneous text (time zones, 'at', etc if needed, though Date parses many)
+    // Clean up "Time:" prefix often found in scrapes
+    s = s.replace(/^Time:\s*/i, '').replace(/ প্রকাশিত:?/i, '').replace(/ আপডেট:?/i, '');
+
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d;
+  } catch (e) {
+    return null;
+  }
+  return null;
 };
 
 const fetchWithProxy = async (url) => {
@@ -254,19 +345,19 @@ const categorize = (text) => {
       ['খেলা', 3], ['ক্রিকেট', 5], ['ফুটবল', 5], ['ম্যাচ', 3], ['টেস্ট', 2], ['সাকিব', 3], ['মেসি', 3], ['গোল', 2], ['উইকেট', 2], ['রান', 2], ['টুর্নামেন্ট', 2]
     ],
     Politics: [
-      ['রাজনীতি', 5], ['নির্বাচন', 5], ['সরকার', 4], ['বিরোধী', 3], ['মন্ত্রি', 3], ['মন্ত্রিপরিষদ',2], ['প্রধানমন্ত্রী',4], ['বিজেপি',3], ['বিএনপি',4], ['আওয়ামী',4], ['সভাপতি',2]
+      ['রাজনীতি', 5], ['নির্বাচন', 5], ['সরকার', 4], ['বিরোধী', 3], ['মন্ত্রি', 3], ['মন্ত্রিপরিষদ', 2], ['প্রধানমন্ত্রী', 4], ['বিজেপি', 3], ['বিএনপি', 4], ['আওয়ামী', 4], ['সভাপতি', 2]
     ],
     Entertainment: [
       ['বিনোদন', 4], ['চলচ্চিত্র', 3], ['সিনেমা', 3], ['অভিনেতা', 3], ['অভিনেত্রী', 3], ['গান', 2], ['সিরিয়াল', 2]
     ],
     Business: [
-      ['অর্থনীতি', 5], ['বাজেট', 4], ['শেয়ার', 4], ['স্টক', 4], ['ব্যাংক', 3], ['টাকা', 3], ['অর্থ', 3], ['বিনিয়োগ',3]
+      ['অর্থনীতি', 5], ['বাজেট', 4], ['শেয়ার', 4], ['স্টক', 4], ['ব্যাংক', 3], ['টাকা', 3], ['অর্থ', 3], ['বিনিয়োগ', 3]
     ],
     Technology: [
       ['প্রযুক্তি', 4], ['স্মার্টফোন', 4], ['মোবাইল', 3], ['কম্পিউটার', 3], ['ইন্টারনেট', 3], ['এআই', 4], ['ai', 2]
     ],
     Health: [
-      ['স্বাস্থ্য', 4], ['কোভিড', 4], ['ভ্যাকসিন', 4], ['রোগ', 3], ['ডায়াবেটিস', 2], ['হাসপাতাল',2]
+      ['স্বাস্থ্য', 4], ['কোভিড', 4], ['ভ্যাকসিন', 4], ['রোগ', 3], ['ডায়াবেটিস', 2], ['হাসপাতাল', 2]
     ],
     World: [
       ['প্রবাস', 2], ['বিশ্ব', 2], ['সংঘর্ষ', 3], ['আন্তর্জাতিক', 4], ['যুক্তরাষ্ট্র', 2], ['ভারত', 2]
@@ -295,7 +386,7 @@ const categorize = (text) => {
 
   // If there is no signal at all, log sample and fallback to General
   if (!bestScore) {
-    try { console.debug('[categorize] no-signal', { text: t.slice(0,200), scores }); } catch(e){}
+    try { console.debug('[categorize] no-signal', { text: t.slice(0, 200), scores }); } catch (e) { }
     return 'General';
   }
 
@@ -317,21 +408,36 @@ const scrapeHomepage = async (source) => {
     const newsItems = [];
     const seenLinks = new Set();
 
-    // Selectors for headlines
+    // Selectors for headlines (using descendant selector instead of direct child for flexibility)
     const selectors = [
-      'h1 > a', 'h2 > a', 'h3 > a', 'h4 > a',
+      'h1 a', 'h2 a', 'h3 a', 'h4 a', 'h5 a', 'h6 a',
       '.news-title a', '.card-title a', '.title a',
-      '.lead-news a', '.top-news a', '.post-title a'
+      '.lead-news a', '.top-news a', '.post-title a',
+      '.article-title a', '.entry-title a', '.headline a',
+      '.news-item a', '.story-title a', '.heading a'
     ];
 
     // Collect all potential links
-    const elements = doc.querySelectorAll(selectors.join(','));
+    let elements = Array.from(doc.querySelectorAll(selectors.join(',')));
+
+    // Fallback: If no items found with selectors, try finding ANY link with substantial text
+    if (elements.length === 0) {
+      console.log('Using fallback scraper strategy for', source.name);
+      const allLinks = Array.from(doc.querySelectorAll('body a'));
+      elements = allLinks.filter(el => {
+        const text = el.textContent.trim();
+        const href = el.getAttribute('href');
+        // Filter out short text, nav links, etc.
+        return text.length > 20 && href && !href.includes('javascript:') && !href.includes('#');
+      });
+    }
 
     elements.forEach(el => {
       // Basic validation
       const title = el.textContent.trim();
       let link = el.getAttribute('href');
 
+      // Stricter title length check for fallback
       if (!title || title.length < 15 || !link) return;
 
       // Fix relative links
@@ -343,32 +449,79 @@ const scrapeHomepage = async (source) => {
       }
 
       if (seenLinks.has(link)) return;
+
+      // Heuristic: URL should usually contain more than just domain (e.g. /article/...)
+      // But some sites have query params. Just skip root paths.
+      try {
+        const linkUrl = new URL(link);
+        if (linkUrl.pathname === '/' || linkUrl.pathname.length < 2) return;
+      } catch (e) { }
+
       seenLinks.add(link);
 
-      // Find image nearby (naive check parent/grandparent)
+      // Find image nearby (check parent/grandparent/siblings)
       let image = null;
-      const parent = el.closest('div, article, li');
+      // Look up to 3 parents
+      let parent = el.closest('div, article, li, p');
+      if (!parent) parent = el.parentElement;
+
       if (parent) {
+        // Try to find an image in the same card
         const img = parent.querySelector('img');
         if (img) {
-          image = img.getAttribute('src') || img.getAttribute('data-src');
-          if (image && image.startsWith('/')) {
-            if (image.startsWith('//')) {
-              image = 'https:' + image;
-            } else {
-              image = new URL(source.homepage).origin + image;
-            }
+          image = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('data-original');
+        } else {
+          // Try previous sibling (common in lists: img then text)
+          const prev = parent.previousElementSibling;
+          if (prev && prev.querySelector('img')) {
+            const prevImg = prev.querySelector('img');
+            image = prevImg.getAttribute('src') || prevImg.getAttribute('data-src');
           }
+        }
+      }
+
+      // Fix relative image URLs
+      if (image && image.startsWith('/')) {
+        if (image.startsWith('//')) {
+          image = 'https:' + image;
+        } else {
+          image = new URL(source.homepage).origin + image;
         }
       }
 
       const snippet = parent ? (parent.textContent || '').trim().slice(0, 250) : title;
 
+      // Try to find a date
+      let pubDate = new Date();
+      let extractedDate = null;
+
+      if (parent) {
+        // Look for time element
+        const timeEl = parent.querySelector('time');
+        if (timeEl) {
+          const dtResult = timeEl.getAttribute('datetime') || timeEl.textContent;
+          extractedDate = parseCustomDate(dtResult);
+        }
+
+        // Fallback: look for common date classes
+        if (!extractedDate) {
+          const dateEl = parent.querySelector('.time, .date, .meta-time, .post-date, .published');
+          if (dateEl) extractedDate = parseCustomDate(dateEl.textContent);
+        }
+      }
+
+      if (extractedDate) {
+        pubDate = extractedDate;
+      } else if (newsItems.length > 0) {
+        // If no date found, stagger slightly backwards so they don't all look identical
+        pubDate = new Date(Date.now() - (newsItems.length * 1000));
+      }
+
       newsItems.push({
         id: link,
         title: title,
         link: link,
-        pubDate: new Date(), // Homepage items are usually fresh
+        pubDate: pubDate,
         content: 'বিস্তারিত দেখতে ক্লিক করুন...',
         shortContent: 'বিস্তারিত দেখতে ক্লিক করুন...',
         image: image,
@@ -429,8 +582,11 @@ const fetchFromRSS = async (source, options = {}) => {
 
       const pubDateStr = item.querySelector('pubDate, published, updated')?.textContent || '';
 
-      let pubDate = new Date(pubDateStr);
-      if (isNaN(pubDate.getTime())) pubDate = new Date();
+      let pubDate = parseCustomDate(pubDateStr);
+      if (!pubDate) {
+        pubDate = new Date(pubDateStr);
+        if (isNaN(pubDate.getTime())) pubDate = new Date();
+      }
 
       // Skip old items unless allowOld option is set (used for search)
       if (!options.allowOld && !isWithinDateRange(pubDate)) return;
@@ -502,11 +658,12 @@ const fetchSource = async (source) => {
   return uniqueItems;
 };
 
-export const fetchNews = async () => {
-  console.log('🔄 Fetching news from all sources...');
+export const fetchNews = async (customSources = null) => {
+  const sourcesToFetch = customSources || DEFAULT_SOURCES;
+  console.log(`🔄 Fetching news from ${sourcesToFetch.length} sources...`);
   const allNews = [];
 
-  for (const source of NEWS_SOURCES) {
+  for (const source of sourcesToFetch) {
     const items = await fetchSource(source);
     allNews.push(...items);
     await delay(RATE_LIMIT_DELAY);
@@ -517,13 +674,14 @@ export const fetchNews = async () => {
 };
 
 // Search across all sources (no date limit) and return items matching `query` in title or content
-export const searchAllSources = async (query) => {
+export const searchAllSources = async (query, customSources = null) => {
   if (!query || String(query).trim().length === 0) return [];
   const q = String(query).toLowerCase().trim();
+  const sourcesToFetch = customSources || DEFAULT_SOURCES;
 
   const allNews = [];
 
-  for (const source of NEWS_SOURCES) {
+  for (const source of sourcesToFetch) {
     try {
       // Fetch RSS with allowOld=true so older items are included
       const rssItems = await fetchFromRSS(source, { allowOld: true });
@@ -568,16 +726,16 @@ export const searchAllSources = async (query) => {
 
   console.debug('[searchAllSources] total fetched', allNews.length, 'matched', unique.length, 'for query', q);
   if (unique.length > 0) {
-    console.debug('[searchAllSources] sample matches', unique.slice(0,5).map(it => ({ title: it.title, link: it.link, source: it.source })));
+    console.debug('[searchAllSources] sample matches', unique.slice(0, 5).map(it => ({ title: it.title, link: it.link, source: it.source })));
   } else {
     try {
-      const sample = allNews.slice(0, 10).map(it => ({ title: it.title, link: it.link, source: it.source, contentSnippet: (it.shortContent||'').slice(0,120) }));
+      const sample = allNews.slice(0, 10).map(it => ({ title: it.title, link: it.link, source: it.source, contentSnippet: (it.shortContent || '').slice(0, 120) }));
       console.debug('[searchAllSources] NO MATCH - sample fetched items (first 10):', sample);
-      const inLinks = allNews.filter(it => (it.link || '').toLowerCase().includes(q)).slice(0,5).map(it=>({link:it.link, title:it.title}));
-      const inSourceNames = allNews.filter(it => (it.source || '').toLowerCase().includes(q)).slice(0,5).map(it=>it.source);
+      const inLinks = allNews.filter(it => (it.link || '').toLowerCase().includes(q)).slice(0, 5).map(it => ({ link: it.link, title: it.title }));
+      const inSourceNames = allNews.filter(it => (it.source || '').toLowerCase().includes(q)).slice(0, 5).map(it => it.source);
       console.debug('[searchAllSources] query found in links (sample):', inLinks);
       console.debug('[searchAllSources] query found in source names (sample):', inSourceNames);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   unique.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));

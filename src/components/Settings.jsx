@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, RotateCcw, Trash2, Download, Upload, AlertCircle } from 'lucide-react';
+import { X, Check, RotateCcw, Trash2, Download, Upload, AlertCircle, Plus, Search, Globe, Rss } from 'lucide-react';
+import { discoverSource, DEFAULT_SOURCES } from '../services/newsService';
 import './Settings.css';
 
 const DEFAULT_SETTINGS = {
-    enabledSources: [
-        'jago-news', 'risingbd', 'prothom-alo', 'bdnews24',
-        'somoy-tv', 'ntv', 'channel-i', 'daily-star', 'bbc-bangla'
-    ],
+    sources: DEFAULT_SOURCES,
+    enabledSources: [], // Will be filled with IDs
     theme: 'light',
     fontSize: 16,
     viewDensity: 'comfortable',
@@ -19,22 +18,15 @@ const DEFAULT_SETTINGS = {
     imagePreloading: true
 };
 
-const NEWS_SOURCES = [
-    { name: 'জাগো নিউজ ২৪', id: 'jago-news', color: '#f68b1e' },
-    { name: 'রাইজিংবিডি', id: 'risingbd', color: '#dc2626' },
-    { name: 'প্রথম আলো', id: 'prothom-alo', color: '#ed1c24' },
-    { name: 'বিডিনিউজ২৪', id: 'bdnews24', color: '#be1e2d' },
-    { name: 'সময় টিভি', id: 'somoy-tv', color: '#1e40af' },
-    { name: 'এনটিভি', id: 'ntv', color: '#059669' },
-    { name: 'চ্যানেল আই', id: 'channel-i', color: '#7c3aed' },
-    { name: 'ডেইলি স্টার বাংলা', id: 'daily-star', color: '#0891b2' },
-    { name: 'বিবিসি বাংলা', id: 'bbc-bangla', color: '#b80000' }
-];
-
 const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
     const [activeTab, setActiveTab] = useState('sources');
     const [settings, setSettings] = useState(currentSettings || DEFAULT_SETTINGS);
     const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+    // Add Source State
+    const [newSourceUrl, setNewSourceUrl] = useState('');
+    const [isDiscovering, setIsDiscovering] = useState(false);
+    const [discoveryError, setDiscoveryError] = useState(null);
 
     useEffect(() => {
         if (currentSettings) {
@@ -50,19 +42,107 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
         }
     };
 
+    // Fix: Toggle source safely without affecting other settings
     const toggleSource = (sourceId) => {
-        const enabledSources = settings.enabledSources.includes(sourceId)
-            ? settings.enabledSources.filter(id => id !== sourceId)
-            : [...settings.enabledSources, sourceId];
-        updateSetting('enabledSources', enabledSources);
+        const currentEnabled = settings.enabledSources || [];
+        const enabledSources = currentEnabled.includes(sourceId)
+            ? currentEnabled.filter(id => id !== sourceId)
+            : [...currentEnabled, sourceId];
+
+        // Setup new settings ensure we preserve everything else (especially theme)
+        const newSettings = {
+            ...settings,
+            enabledSources
+        };
+
+        setSettings(newSettings);
+        if (onSettingsChange) {
+            onSettingsChange(newSettings);
+        }
     };
 
     const selectAllSources = () => {
-        updateSetting('enabledSources', NEWS_SOURCES.map(s => s.id));
+        const allIds = (settings.sources || DEFAULT_SOURCES).map(s => s.id);
+        updateSetting('enabledSources', allIds);
     };
 
     const deselectAllSources = () => {
         updateSetting('enabledSources', []);
+    };
+
+    const handleAddSource = async (e) => {
+        e.preventDefault();
+        if (!newSourceUrl.trim()) return;
+
+        setIsDiscovering(true);
+        setDiscoveryError(null);
+
+        try {
+            const result = await discoverSource(newSourceUrl);
+
+            // Check if already exists
+            const existing = (settings.sources || DEFAULT_SOURCES).find(s => s.id === result.id);
+            if (existing) {
+                setDiscoveryError('এই সংবাদ উৎসটি ইতিমধ্যে যুক্ত আছে।');
+                setIsDiscovering(false);
+                return;
+            }
+
+            // Update sources AND enable the new one
+            setSettings(prevSettings => {
+                // Re-calculate based on latest state to avoid stale closure
+                const currentSources = prevSettings.sources || DEFAULT_SOURCES;
+                // Avoid duplicates check again just in case
+                if (currentSources.find(s => s.id === result.id)) return prevSettings;
+
+                const newSources = [...currentSources, result];
+                const newEnabled = [...(prevSettings.enabledSources || []), result.id];
+
+                const newSettings = {
+                    ...prevSettings,
+                    sources: newSources,
+                    enabledSources: newEnabled
+                };
+
+                // Notify parent safely
+                if (onSettingsChange) {
+                    Promise.resolve().then(() => onSettingsChange(newSettings));
+                }
+
+                return newSettings;
+            });
+
+            setNewSourceUrl('');
+            alert(`সফলভাবে যুক্ত হয়েছে: ${result.name}`);
+        } catch (err) {
+            setDiscoveryError(err.message || 'সংবাদ উৎস খুঁজে পাওয়া যায়নি।');
+        } finally {
+            setIsDiscovering(false);
+        }
+    };
+
+    // New Feature: Delete Source
+    const handleDeleteSource = (sourceId, sourceName) => {
+        if (!window.confirm(`আপনি কি নিশ্চিত যে "${sourceName}" মুছে ফেলতে চান?`)) return;
+
+        setSettings(prevSettings => {
+            const currentSources = prevSettings.sources || DEFAULT_SOURCES;
+            const newSources = currentSources.filter(s => s.id !== sourceId);
+
+            // Also remove from enabled list
+            const newEnabled = (prevSettings.enabledSources || []).filter(id => id !== sourceId);
+
+            const newSettings = {
+                ...prevSettings,
+                sources: newSources,
+                enabledSources: newEnabled
+            };
+
+            if (onSettingsChange) {
+                Promise.resolve().then(() => onSettingsChange(newSettings));
+            }
+            return newSettings;
+        });
     };
 
     const handleClearCache = () => {
@@ -94,28 +174,41 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
         reader.onload = (event) => {
             try {
                 const imported = JSON.parse(event.target.result);
+                // Validate imported settings basics
+                if (!imported.sources && !imported.enabledSources) throw new Error("Invalid Format");
+
                 setSettings(imported);
                 if (onSettingsChange) {
                     onSettingsChange(imported);
                 }
                 alert('সেটিংস সফলভাবে আমদানি করা হয়েছে');
             } catch (err) {
-                alert('সেটিংস আমদানি করতে ব্যর্থ হয়েছে');
+                alert('সেটিংস আমদানি করতে ব্যর্থ হয়েছে: ' + err.message);
             }
         };
         reader.readAsText(file);
     };
 
     const handleResetSettings = () => {
-        setSettings(DEFAULT_SETTINGS);
+        const resetState = {
+            ...DEFAULT_SETTINGS,
+            sources: DEFAULT_SOURCES, // Reset to default sources
+            enabledSources: DEFAULT_SOURCES.map(s => s.id)
+        };
+        setSettings(resetState);
         if (onSettingsChange) {
-            onSettingsChange(DEFAULT_SETTINGS);
+            onSettingsChange(resetState);
         }
         setShowResetConfirm(false);
         alert('সেটিংস রিসেট করা হয়েছে');
     };
 
     if (!isOpen) return null;
+
+    // Use settings.sources or fallback to default
+    const currentSources = settings.sources && settings.sources.length > 0
+        ? settings.sources
+        : DEFAULT_SOURCES;
 
     return (
         <div className="settings-overlay" onClick={onClose}>
@@ -157,30 +250,89 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
                 <div className="settings-content">
                     {activeTab === 'sources' && (
                         <div className="settings-section">
+                            {/* Add Source Form */}
+                            <div className="add-source-box">
+                                <h4>নতুন সংবাদ উৎস যোগ করুন</h4>
+                                <form onSubmit={handleAddSource} className="source-input-group">
+                                    <input
+                                        type="text"
+                                        placeholder="ওয়েবসাইট বা RSS লিংক (যেমন: bdnews24.com)"
+                                        value={newSourceUrl}
+                                        onChange={(e) => setNewSourceUrl(e.target.value)}
+                                        disabled={isDiscovering}
+                                    />
+                                    <button type="submit" className="add-btn" disabled={isDiscovering || !newSourceUrl}>
+                                        {isDiscovering ? <span className="infinite-spin">↻</span> : <Plus size={18} />}
+                                        {isDiscovering ? 'খোঁজা হচ্ছে...' : 'যোগ করুন'}
+                                    </button>
+                                </form>
+                                {discoveryError && (
+                                    <div className="error-msg">
+                                        <AlertCircle size={14} />
+                                        <span>{discoveryError}</span>
+                                    </div>
+                                )}
+                                <p className="help-text">
+                                    যে কোনো সংবাদ ওয়েবসাইটের লিংক দিন, অ্যাপ স্বয়ংক্রিয়ভাবে খবর খুঁজে নেবে।
+                                </p>
+                            </div>
+
+                            <hr className="divider" />
+
                             <div className="section-header">
-                                <h3>সংবাদ উৎস নির্বাচন করুন</h3>
+                                <h3>সক্রিয় সংবাদ উৎস ({currentSources.length})</h3>
                                 <div className="source-actions">
                                     <button className="text-btn" onClick={selectAllSources}>সব নির্বাচন করুন</button>
                                     <button className="text-btn" onClick={deselectAllSources}>সব বাতিল করুন</button>
                                 </div>
                             </div>
-                            <div className="sources-grid">
-                                {NEWS_SOURCES.map(source => (
-                                    <label key={source.id} className="source-item">
-                                        <input
-                                            type="checkbox"
-                                            checked={settings.enabledSources.includes(source.id)}
-                                            onChange={() => toggleSource(source.id)}
-                                        />
-                                        <span className="source-indicator" style={{ backgroundColor: source.color }}></span>
-                                        <span className="source-name">{source.name}</span>
-                                        {settings.enabledSources.includes(source.id) && (
-                                            <Check size={16} className="check-icon" />
-                                        )}
-                                    </label>
-                                ))}
+
+                            <div className="sources-list">
+                                {currentSources.map(source => {
+                                    const isEnabled = (settings.enabledSources || []).includes(source.id);
+                                    // Use hardcoded check to see if it's a default source (optional: prevents deleting defaults if desired, but user asked to delete)
+                                    // User said "User should be able to delete a news source", usually implies custom ones, but maybe defaults too.
+                                    // I'll allow deleting any source.
+
+                                    return (
+                                        <div key={source.id} className={`source-row ${isEnabled ? 'enabled' : ''}`}>
+                                            <label className="source-toggle">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isEnabled}
+                                                    onChange={() => toggleSource(source.id)}
+                                                />
+                                                <span className="source-color" style={{ backgroundColor: source.color || '#ccc' }}></span>
+                                                <div className="source-info">
+                                                    <span className="source-name">{source.name}</span>
+                                                    <span className="source-domain">{new URL(source.homepage || source.url || 'http://localhost').hostname}</span>
+                                                </div>
+                                            </label>
+
+                                            <div className="source-row-actions">
+                                                {source.url ? (
+                                                    <span className="badge rss" title="RSS ফিড উপলব্ধ"><Rss size={12} /> RSS</span>
+                                                ) : (
+                                                    <span className="badge scrape" title="ওয়েব স্ক্র্যাপিং"><Globe size={12} /> Web</span>
+                                                )}
+
+                                                <button
+                                                    className="icon-btn delete-btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); // Stop click from toggling checkbox logic if bubbling
+                                                        handleDeleteSource(source.id, source.name);
+                                                    }}
+                                                    title="মুছে ফেলুন"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
-                            {settings.enabledSources.length === 0 && (
+
+                            {(settings.enabledSources || []).length === 0 && (
                                 <div className="warning-box">
                                     <AlertCircle size={18} />
                                     <span>অন্তত একটি সংবাদ উৎস নির্বাচন করুন</span>

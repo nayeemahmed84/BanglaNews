@@ -4,7 +4,7 @@ import FilterBar from './components/FilterBar';
 import NewsCard from './components/NewsCard';
 import NewsModal from './components/NewsModal';
 import Settings from './components/Settings';
-import { fetchNews, searchAllSources } from './services/newsService';
+import { fetchNews, searchAllSources, DEFAULT_SOURCES } from './services/newsService';
 import { scrapeImagesForArticles } from './services/imageScraper';
 import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image } from 'lucide-react';
 import './App.css';
@@ -14,10 +14,8 @@ const ITEMS_PER_PAGE = 20;
 
 
 const DEFAULT_SETTINGS = {
-  enabledSources: [
-    'jago-news', 'risingbd', 'prothom-alo', 'bdnews24',
-    'somoy-tv', 'ntv', 'channel-i', 'daily-star', 'bbc-bangla'
-  ],
+  sources: DEFAULT_SOURCES,
+  enabledSources: DEFAULT_SOURCES.map(s => s.id),
   theme: 'light',
   fontSize: 16,
   viewDensity: 'comfortable',
@@ -33,7 +31,16 @@ function App() {
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem('app_settings');
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Ensure sources exist for legacy settings
+        if (!parsed.sources) {
+          parsed.sources = DEFAULT_SOURCES;
+          // If enabledSources were IDs, they are fine. ensure we have sources array
+        }
+        return { ...DEFAULT_SETTINGS, ...parsed };
+      }
+      return DEFAULT_SETTINGS;
     } catch {
       return DEFAULT_SETTINGS;
     }
@@ -68,22 +75,27 @@ function App() {
   });
 
   // Handle settings changes
+  // Handle settings changes
   const handleSettingsChange = useCallback((newSettings) => {
-    setSettings(newSettings);
-    localStorage.setItem('app_settings', JSON.stringify(newSettings));
+    setSettings(prev => {
+      const merged = { ...prev, ...newSettings };
+      localStorage.setItem('app_settings', JSON.stringify(merged));
 
-    // Apply settings immediately
-    setAutoRefresh(newSettings.autoRefresh);
-    setSelectedCategory(newSettings.defaultCategory);
+      // Apply settings immediately
+      // Note: We use 'newSettings' values if present, else fallback to 'merged' (prev)
+      if (newSettings.autoRefresh !== undefined) setAutoRefresh(newSettings.autoRefresh);
+      if (newSettings.defaultCategory) setSelectedCategory(newSettings.defaultCategory);
 
-    // Apply theme
-    if (newSettings.theme === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('theme', 'light');
-    }
+      // Apply theme (check merged theme to be safe)
+      if (merged.theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('theme', 'light');
+      }
+      return merged;
+    });
   }, []);
 
   const loadMoreRef = useCallback(node => {
@@ -166,7 +178,7 @@ function App() {
     }
 
     try {
-      const data = await fetchNews();
+      const data = await fetchNews(settings.sources);
 
       // Filter by enabled sources
       const filteredBySource = data.filter(item =>
@@ -331,7 +343,7 @@ function App() {
     setRemoteResults(null);
     setLastRemoteQuery(query);
     try {
-      const results = await searchAllSources(query);
+      const results = await searchAllSources(query, settings.sources);
       setRemoteResults(results);
       // update filtered/news view to remote results immediately
       setFilteredNews(results);
