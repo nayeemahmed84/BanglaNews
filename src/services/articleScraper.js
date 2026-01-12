@@ -204,14 +204,101 @@ const extractArticleContent = (html, sourceId) => {
     // Extract main image
     const imageSelectors = [
         'meta[property="og:image"]', '.featured-image img', '.article-image img',
-        '.news-image img', 'article img', '.content img'
+        '.news-image img', 'article img', '.content img', '.post-thumbnail img',
+        '.main-image img', '.hero-image img', 'figure img', '.cover-image img',
+        // Common containers for background images
+        '.featured-image', '.article-image', '.news-image', '.hero-image', '.cover-image'
     ];
 
     for (const selector of imageSelectors) {
         const el = doc.querySelector(selector);
         if (el) {
-            image = el.getAttribute('content') || el.getAttribute('src');
-            if (image) break;
+            // 1. Check for standard img attributes (including lazy loading)
+            let candidate = el.getAttribute('content') ||
+                el.getAttribute('data-src') ||
+                el.getAttribute('data-original') ||
+                el.getAttribute('data-lazy-src') ||
+                el.getAttribute('data-url') ||
+                el.getAttribute('src');
+
+            // 2. Check for background-image style
+            if (!candidate && el.style && el.style.backgroundImage) {
+                const bgMatch = el.style.backgroundImage.match(/url\(['"]?(.*?)['"]?\)/);
+                if (bgMatch) candidate = bgMatch[1];
+            }
+
+            // 3. Check for specific bdnews24/modern patterns (picture tag)
+            if (!candidate && el.tagName === 'IMG') {
+                const picture = el.closest('picture');
+                if (picture) {
+                    const source = picture.querySelector('source[srcset]');
+                    if (source) {
+                        const srcset = source.getAttribute('srcset');
+                        if (srcset) candidate = srcset.split(',')[0].split(' ')[0]; // best effort: first URL
+                    }
+                }
+            }
+
+            if (candidate) {
+                image = candidate;
+                break;
+            }
+        }
+    }
+
+    // Fallback: If no main image found, try to find ANY substantial image in the structure
+    if (!image) {
+        // Try looking for a picture tag anywhere in the top 30% of the document
+        const firstPicture = doc.querySelector('picture');
+        if (firstPicture) {
+            const img = firstPicture.querySelector('img');
+            if (img) {
+                image = img.getAttribute('src') || img.getAttribute('data-src');
+            } else {
+                const source = firstPicture.querySelector('source[srcset]');
+                if (source) {
+                    const srcset = source.getAttribute('srcset');
+                    if (srcset) image = srcset.split(',')[0].split(' ')[0];
+                }
+            }
+        }
+    }
+
+    // Secondary Fallback: Look in extracted content
+    if (!image && contentHtml) {
+        const contentDoc = new DOMParser().parseFromString(contentHtml, 'text/html');
+        // Find all images
+        const images = contentDoc.querySelectorAll('img');
+        for (const img of images) {
+            const possibleImage = img.getAttribute('src') || img.getAttribute('data-src');
+            if (possibleImage && possibleImage.length > 20) {
+                image = possibleImage;
+                break;
+            }
+        }
+    }
+
+    // Final Fallback: Scrape the entire body for the first "likely" main image
+    // This catches cases where the image is just a raw <img> tag at the top of the body
+    if (!image) {
+        const allImages = Array.from(doc.querySelectorAll('body img'));
+        for (const img of allImages) {
+            // Skip small icons, tracking pixels, etc. based on class/id names or attributes
+            const src = img.getAttribute('src') || img.getAttribute('data-src');
+            if (!src) continue;
+
+            // Skip common junk images
+            if (src.includes('logo') || src.includes('icon') || src.includes('avatar') || src.includes('tracker')) continue;
+
+            // If it has width/height, check they are substantial
+            const w = parseInt(img.getAttribute('width'));
+            const h = parseInt(img.getAttribute('height'));
+            if (w && w < 200) continue;
+            if (h && h < 100) continue;
+
+            // If we are here, it's a candidate
+            image = src;
+            break;
         }
     }
 

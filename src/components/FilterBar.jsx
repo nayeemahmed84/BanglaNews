@@ -1,8 +1,7 @@
 import React from 'react';
 import './FilterBar.css';
 
-const CATEGORIES = ['All', 'Politics', 'Sports', 'Entertainment', 'Business', 'Technology', 'General'];
-
+const CATEGORIES = ['All', 'Saved', 'Politics', 'Sports', 'Entertainment', 'Business', 'Technology', 'General'];
 const FilterBar = ({ selectedCategory, onCategoryChange }) => {
     return (
         <div className="filter-bar">
@@ -26,6 +25,7 @@ const FilterBar = ({ selectedCategory, onCategoryChange }) => {
 const translateCategory = (category) => {
     const translations = {
         'All': 'সব খবর',
+        'Saved': 'সংরক্ষিত',
         'Politics': 'রাজনীতি',
         'Sports': 'খেলা',
         'Entertainment': 'বিনোদন',

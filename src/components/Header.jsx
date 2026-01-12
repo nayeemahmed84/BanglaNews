@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Moon, Sun, Newspaper, Loader, X, Languages, Settings as SettingsIcon } from 'lucide-react';
+import WeatherWidget from './WeatherWidget';
 import './Header.css';
 
 const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClearSearch, onHomeClick, onSettingsClick }) => {
@@ -207,6 +208,7 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
                 </div>
 
                 <div className="header-actions">
+                    <WeatherWidget />
                     <button
                         className="theme-toggle"
                         onClick={() => setIsDark(!isDark)}

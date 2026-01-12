@@ -65,6 +65,20 @@ function App() {
   const [remoteSearching, setRemoteSearching] = useState(false);
   const [remoteResults, setRemoteResults] = useState(null);
   const [lastRemoteQuery, setLastRemoteQuery] = useState('');
+
+  // View mode state (grid vs list)
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('view_mode') || 'grid';
+  });
+
+  const toggleViewMode = useCallback(() => {
+    setViewMode(prev => {
+      const next = prev === 'grid' ? 'list' : 'grid';
+      localStorage.setItem('view_mode', next);
+      return next;
+    });
+  }, []);
+
   const [readIds, setReadIds] = useState(() => {
     try {
       const saved = localStorage.getItem('read_news_ids');
@@ -74,7 +88,29 @@ function App() {
     }
   });
 
-  // Handle settings changes
+  // Bookmarks state
+  const [bookmarks, setBookmarks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('bookmarked_news_ids');
+      return new Set(saved ? JSON.parse(saved) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleBookmark = useCallback((newsId) => {
+    setBookmarks(prev => {
+      const newBookmarks = new Set(prev);
+      if (newBookmarks.has(newsId)) {
+        newBookmarks.delete(newsId);
+      } else {
+        newBookmarks.add(newsId);
+      }
+      localStorage.setItem('bookmarked_news_ids', JSON.stringify([...newBookmarks]));
+      return newBookmarks;
+    });
+  }, []);
+
   // Handle settings changes
   const handleSettingsChange = useCallback((newSettings) => {
     setSettings(prev => {
@@ -233,7 +269,7 @@ function App() {
       if (showLoading) setLoading(false);
       setBackgroundRefreshing(false);
     }
-  }, [scrapeImages]);
+  }, [scrapeImages, readIds]); // Added readIds to dep
 
   // Initial load
   useEffect(() => {
@@ -268,7 +304,9 @@ function App() {
   useEffect(() => {
     let result = allNews;
 
-    if (selectedCategory !== 'All') {
+    if (selectedCategory === 'Saved') {
+      result = result.filter(item => bookmarks.has(item.id));
+    } else if (selectedCategory !== 'All') {
       result = result.filter((item) => item.category === selectedCategory);
     }
 
@@ -281,7 +319,7 @@ function App() {
     }
 
     setFilteredNews(result);
-  }, [searchQuery, selectedCategory, allNews]);
+  }, [searchQuery, selectedCategory, allNews, bookmarks]);
 
   // Handle pagination reset on filter change
   useEffect(() => {
@@ -420,6 +458,19 @@ function App() {
           </div>
           <div className="header-actions">
             <span className="news-count">{filteredNews.length} টি খবর</span>
+
+            <button
+              className="view-mode-btn"
+              onClick={toggleViewMode}
+              title={viewMode === 'grid' ? "লিস্ট ভিউ" : "গ্রিড ভিউ"}
+            >
+              {viewMode === 'grid' ? (
+                <div style={{ transform: 'rotate(90deg)' }}><LayoutGrid size={18} /></div>
+              ) : (
+                <LayoutGrid size={18} />
+              )}
+            </button>
+
             <button
               className={`auto-refresh-btn ${autoRefresh ? 'active' : ''}`}
               onClick={() => setAutoRefresh(!autoRefresh)}
@@ -447,14 +498,22 @@ function App() {
           </div>
         ) : displayedNews.length > 0 ? (
           <>
-            <div className={`news-grid view-density-${settings.viewDensity}`}>
+            <div className={`news-grid view-density-${settings.viewDensity} ${viewMode}-view`}>
               {displayedNews.map((item, index) => (
                 <div
                   key={item.id + '-' + index}
                   onClick={() => handleCardClick(item)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <NewsCard news={item} isRead={readIds.has(item.id)} />
+                  <NewsCard
+                    news={item}
+                    isRead={readIds.has(item.id)}
+                    isBookmarked={bookmarks.has(item.id)}
+                    onToggleBookmark={(e) => {
+                      e.stopPropagation();
+                      toggleBookmark(item.id);
+                    }}
+                  />
                 </div>
               ))}
             </div>
@@ -488,7 +547,12 @@ function App() {
       </footer>
 
       {selectedNews && (
-        <NewsModal news={selectedNews} onClose={() => setSelectedNews(null)} />
+        <NewsModal
+          news={selectedNews}
+          onClose={() => setSelectedNews(null)}
+          isBookmarked={bookmarks.has(selectedNews.id)}
+          onToggleBookmark={() => toggleBookmark(selectedNews.id)}
+        />
       )}
 
       {showSettings && (

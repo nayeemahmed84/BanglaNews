@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Bookmark } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import './NewsCard.css';
@@ -14,7 +14,7 @@ const formatDate = (pubDate) => {
     }
 };
 
-const NewsCard = ({ news, isRead }) => {
+const NewsCard = ({ news, isRead, isBookmarked, onToggleBookmark }) => {
     const { title, pubDate, image, source, sourceColor, category, isNew, isCached } = news;
 
     const classes = ["news-card", "fade-in"];
@@ -25,11 +25,20 @@ const NewsCard = ({ news, isRead }) => {
     return (
         <div className={classes.join(' ')}>
             <div className="card-image">
-                {(isRead) ? (
+                {(isRead && !isBookmarked) ? (
                     <div className="left-badge read">পড়া হয়েছে</div>
-                ) : (isNew ? (
+                ) : (isNew && !isRead && !isBookmarked ? (
                     <div className="left-badge new">নতুন</div>
                 ) : null)}
+
+                <button
+                    className={`bookmark-btn ${isBookmarked ? 'active' : ''}`}
+                    onClick={onToggleBookmark}
+                    title={isBookmarked ? "বুকমার্ক সরান" : "বুকমার্ক করুন"}
+                >
+                    <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
+                </button>
+
                 {image ? (
                     <img src={image} alt={title} loading="lazy" />
                 ) : (

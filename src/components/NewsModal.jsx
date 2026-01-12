@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Clock, Share2, Loader, Image, Plus, Minus } from 'lucide-react';
+import { X, ExternalLink, Clock, Share2, Loader, Image, Plus, Minus, Bookmark } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { scrapeArticle } from '../services/articleScraper';
@@ -16,7 +16,7 @@ const formatDate = (pubDate) => {
     }
 };
 
-const NewsModal = ({ news, onClose }) => {
+const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark }) => {
     const [fullContent, setFullContent] = useState(null);
     const [fullContentHtml, setFullContentHtml] = useState(null);
     const [fullImage, setFullImage] = useState(null);
@@ -154,7 +154,7 @@ const NewsModal = ({ news, onClose }) => {
     useEffect(() => {
         try {
             localStorage.setItem('news_font_size', String(fontSize));
-        } catch (e) {}
+        } catch (e) { }
     }, [fontSize]);
     const displayContentHtml = fullContentHtml || news.contentHtml || null;
 
@@ -198,24 +198,24 @@ const NewsModal = ({ news, onClose }) => {
 
                     <div className="modal-body">
                         <div className="modal-meta">
-                                <span className="modal-source" style={{ backgroundColor: sourceColor }}>
-                                    {source}
-                                </span>
+                            <span className="modal-source" style={{ backgroundColor: sourceColor }}>
+                                {source}
+                            </span>
 
-                                <span className="modal-category">{category}</span>
-                                <div className="font-controls">
-                                    <button className="font-btn" onClick={() => setFontSize(s => Math.max(12, s - 1))} title="ছোট টেক্সট">
-                                        <Minus size={14} />
-                                    </button>
-                                    <button className="font-btn" onClick={() => setFontSize(s => Math.min(28, s + 1))} title="বড় টেক্সট">
-                                        <Plus size={14} />
-                                    </button>
-                                </div>
-                                <span className="modal-date">
-                                    <Clock size={14} />
-                                    {formatDate(pubDate)}
-                                </span>
+                            <span className="modal-category">{category}</span>
+                            <div className="font-controls">
+                                <button className="font-btn" onClick={() => setFontSize(s => Math.max(12, s - 1))} title="ছোট টেক্সট">
+                                    <Minus size={14} />
+                                </button>
+                                <button className="font-btn" onClick={() => setFontSize(s => Math.min(28, s + 1))} title="বড় টেক্সট">
+                                    <Plus size={14} />
+                                </button>
                             </div>
+                            <span className="modal-date">
+                                <Clock size={14} />
+                                {formatDate(pubDate)}
+                            </span>
+                        </div>
 
                         <h2 className="modal-title">{title}</h2>
 
@@ -240,6 +240,15 @@ const NewsModal = ({ news, onClose }) => {
                         )}
 
                         <div className="modal-actions">
+                            <button
+                                className={`btn-secondary ${isBookmarked ? 'active-bookmark' : ''}`}
+                                onClick={onToggleBookmark}
+                                title={isBookmarked ? "বুকমার্ক সরান" : "বুকমার্ক করুন"}
+                            >
+                                <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
+                                {isBookmarked ? 'সংরক্ষিত' : 'সংরক্ষণ'}
+                            </button>
+
                             <button className="btn-photo-card" onClick={() => setShowShareCard(true)}>
                                 <Image size={18} />
                                 ফটো কার্ড
