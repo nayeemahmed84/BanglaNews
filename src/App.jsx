@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import NewsCard from './components/NewsCard';
 import NewsModal from './components/NewsModal';
 import Settings from './components/Settings';
+import TrendingBar from './components/TrendingBar';
+import StatsModal from './components/StatsModal';
 import { fetchNews, searchAllSources, DEFAULT_SOURCES } from './services/newsService';
 import { scrapeImagesForArticles } from './services/imageScraper';
+import { getTrendingTopics } from './utils/textAnalysis';
 import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image } from 'lucide-react';
 import './App.css';
 
 const AUTO_REFRESH_INTERVAL = 300000; // 5 minutes
 const ITEMS_PER_PAGE = 20;
-
 
 const DEFAULT_SETTINGS = {
   sources: DEFAULT_SOURCES,
@@ -33,10 +35,8 @@ function App() {
       const saved = localStorage.getItem('app_settings');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure sources exist for legacy settings
         if (!parsed.sources) {
           parsed.sources = DEFAULT_SOURCES;
-          // If enabledSources were IDs, they are fine. ensure we have sources array
         }
         return { ...DEFAULT_SETTINGS, ...parsed };
       }
@@ -46,6 +46,7 @@ function App() {
     }
   });
   const [showSettings, setShowSettings] = useState(false);
+  const [showStats, setShowStats] = useState(false);
 
   const [allNews, setAllNews] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
@@ -98,6 +99,11 @@ function App() {
     }
   });
 
+  // Calculate trending topics from allNews
+  const trendingTopics = useMemo(() => {
+    return getTrendingTopics(allNews);
+  }, [allNews]);
+
   const toggleBookmark = useCallback((newsId) => {
     setBookmarks(prev => {
       const newBookmarks = new Set(prev);
@@ -118,7 +124,6 @@ function App() {
       localStorage.setItem('app_settings', JSON.stringify(merged));
 
       // Apply settings immediately
-      // Note: We use 'newSettings' values if present, else fallback to 'merged' (prev)
       if (newSettings.autoRefresh !== undefined) setAutoRefresh(newSettings.autoRefresh);
       if (newSettings.defaultCategory) setSelectedCategory(newSettings.defaultCategory);
 
@@ -192,15 +197,12 @@ function App() {
           });
 
           if (freshCache.length > 0) {
-            // Mark cached items as cached, but ensure they're not shown as "new" on startup
             const marked = freshCache.map(item => ({ ...item, isCached: true, isNew: false }));
-            // Ensure global sorting by pubDate
             marked.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
             setAllNews(marked);
             setLoading(false);
             setBackgroundRefreshing(true);
           } else {
-            // All cached items are old
             localStorage.removeItem('news_cache');
             setLoading(true);
           }
@@ -216,13 +218,11 @@ function App() {
     try {
       const data = await fetchNews(settings.sources);
 
-      // Filter by enabled sources
       const filteredBySource = data.filter(item =>
         settings.enabledSources.includes(item.sourceId)
       );
 
       setAllNews(prevNews => {
-        // Create maps for existing data to preserve state
         const prevMap = new Map();
         if (Array.isArray(prevNews)) {
           prevNews.forEach(item => prevMap.set(item.id, item));
@@ -234,23 +234,16 @@ function App() {
 
           return {
             ...item,
-            // Preserve image if we found one previously
             image: existing?.image || item.image,
-            // Preserve original pubDate (prevent reset on refresh for homepage items)
             pubDate: existing ? existing.pubDate : item.pubDate,
-            // Preserve previous `isNew` unless the item is read; new items (not existing) are marked new
             isNew: existing ? (existing.isNew && !wasRead) : (!wasRead),
-            // Mark as cached if it existed previously
             isCached: !!existing
           };
         });
 
-        // Global sort by pubDate so all sources are interleaved correctly
         mergedData.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
         localStorage.setItem('news_cache', JSON.stringify(mergedData));
 
-        // Start scraping images in background with the merged data
         setTimeout(() => scrapeImages(mergedData), 1000);
 
         return mergedData;
@@ -261,7 +254,6 @@ function App() {
       setPage(1);
     } catch (err) {
       console.error('Fetch error:', err);
-      // Only show error if we have no cached data to show
       if (!localStorage.getItem('news_cache')) {
         setError('খবর লোড করতে সমস্যা হয়েছে। দয়া করে আবার চেষ্টা করুন।');
       }
@@ -269,7 +261,7 @@ function App() {
       if (showLoading) setLoading(false);
       setBackgroundRefreshing(false);
     }
-  }, [scrapeImages, readIds]); // Added readIds to dep
+  }, [scrapeImages, readIds]);
 
   // Initial load
   useEffect(() => {
@@ -281,9 +273,7 @@ function App() {
     if (!autoRefresh) return;
 
     let timeoutId;
-
     const scheduleRefresh = () => {
-      // Add random jitter between 0-60 seconds to appear more human
       const jitter = Math.floor(Math.random() * 60000);
       const delay = settings.refreshInterval + jitter;
 
@@ -291,12 +281,10 @@ function App() {
 
       timeoutId = setTimeout(() => {
         loadNews(false);
-        scheduleRefresh(); // Schedule next refresh after completion
+        scheduleRefresh();
       }, delay);
     };
-
     scheduleRefresh();
-
     return () => clearTimeout(timeoutId);
   }, [autoRefresh, loadNews, settings.refreshInterval]);
 
@@ -344,18 +332,15 @@ function App() {
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-
   const handleCardClick = (newsItem) => {
     setSelectedNews(newsItem);
 
-    // Mark as read (persist read ids) only if tracking is enabled
     if (settings.trackReadArticles && !readIds.has(newsItem.id)) {
       const newReadIds = new Set(readIds).add(newsItem.id);
       setReadIds(newReadIds);
       localStorage.setItem('read_news_ids', JSON.stringify([...newReadIds]));
     }
 
-    // Also update the article flags in-memory so UI updates immediately
     setAllNews(prev => {
       const updated = prev.map(a => a.id === newsItem.id ? { ...a, isNew: false, isCached: true } : a);
       try { localStorage.setItem('news_cache', JSON.stringify(updated)); } catch { }
@@ -368,13 +353,11 @@ function App() {
     setLastRemoteQuery('');
     setRemoteSearching(false);
     setSearchQuery('');
-    // restore local view
     setFilteredNews(allNews);
     setPage(1);
     setHasMore(allNews.length > settings.itemsPerPage);
   }, [allNews, settings.itemsPerPage]);
 
-  // Handle search submit (Enter): perform remote search across all sources (no date limit)
   const handleSearchSubmit = async (query) => {
     if (!query || String(query).trim().length === 0) return;
     setRemoteSearching(true);
@@ -383,7 +366,6 @@ function App() {
     try {
       const results = await searchAllSources(query, settings.sources);
       setRemoteResults(results);
-      // update filtered/news view to remote results immediately
       setFilteredNews(results);
       setPage(1);
       setHasMore(results.length > settings.itemsPerPage);
@@ -394,27 +376,20 @@ function App() {
     }
   };
 
-  // Go to homepage: clear search, reset category, close modal, and refresh feed
   const handleGoHome = useCallback(() => {
     try {
-      // Clear remote search and input
       setRemoteResults(null);
       setLastRemoteQuery('');
       setRemoteSearching(false);
       setSearchQuery('');
-
-      // Reset category and modal
       setSelectedCategory('All');
       setSelectedNews(null);
-
-      // Reload latest news and scroll to top
       loadNews(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (e) {
       console.warn('handleGoHome error', e);
     }
   }, [loadNews]);
-
 
   return (
     <div className="app">
@@ -426,11 +401,17 @@ function App() {
         onSearchSubmit={handleSearchSubmit}
         onClearSearch={handleClearSearch}
         onSettingsClick={() => setShowSettings(true)}
+        onStatsClick={() => setShowStats(true)}
       />
 
       <FilterBar
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
+      />
+
+      <TrendingBar
+        topics={trendingTopics}
+        onTopicClick={(topic) => setSearchQuery(topic)}
       />
 
       <main className="container main-content">
@@ -518,7 +499,6 @@ function App() {
               ))}
             </div>
 
-            {/* Infinite scroll trigger */}
             <div ref={loadMoreRef} className="load-more-trigger">
               {loadingMore && (
                 <div className="loading-more">
@@ -561,6 +541,15 @@ function App() {
           onClose={() => setShowSettings(false)}
           currentSettings={settings}
           onSettingsChange={handleSettingsChange}
+        />
+      )}
+
+      {showStats && (
+        <StatsModal
+          isOpen={showStats}
+          onClose={() => setShowStats(false)}
+          readIds={readIds}
+          allNews={allNews}
         />
       )}
     </div>

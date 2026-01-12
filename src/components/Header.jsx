@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Moon, Sun, Newspaper, Loader, X, Languages, Settings as SettingsIcon } from 'lucide-react';
+import { Search, Moon, Sun, Newspaper, Loader, X, Languages, Settings as SettingsIcon, PieChart } from 'lucide-react';
 import WeatherWidget from './WeatherWidget';
 import './Header.css';
 
-const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClearSearch, onHomeClick, onSettingsClick }) => {
+const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClearSearch, onHomeClick, onSettingsClick, onStatsClick }) => {
     const [isDark, setIsDark] = useState(() => {
         const savedTheme = localStorage.getItem('theme');
         return savedTheme === 'dark';
@@ -218,6 +218,14 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
                     </button>
                     <button
                         className="settings-btn"
+                        onClick={onStatsClick}
+                        aria-label="Stats"
+                        title="পড়ার পরিসংখ্যান"
+                    >
+                        <PieChart size={24} />
+                    </button>
+                    <button
+                        className="settings-btn"
                         onClick={onSettingsClick}
                         aria-label="Settings"
                     >
@@ -230,6 +238,8 @@ const Header = ({ onSearch, searchQuery, onSearchSubmit, remoteSearching, onClea
 };
 
 export default Header;
+
+
 
 // Simple rule-based transliteration (Latin -> Bangla) for quick phonetic conversions
 function transliterateLatinToBangla(input) {
