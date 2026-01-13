@@ -7,6 +7,7 @@ import Settings from './components/Settings';
 import TrendingBar from './components/TrendingBar';
 import StatsModal from './components/StatsModal';
 import { fetchNews, searchAllSources, DEFAULT_SOURCES } from './services/newsService';
+import ProgressBar from './components/ProgressBar';
 import { scrapeImagesForArticles } from './services/imageScraper';
 import { getTrendingTopics } from './utils/textAnalysis';
 import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image } from 'lucide-react';
@@ -66,6 +67,7 @@ function App() {
   const [remoteSearching, setRemoteSearching] = useState(false);
   const [remoteResults, setRemoteResults] = useState(null);
   const [lastRemoteQuery, setLastRemoteQuery] = useState('');
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
 
   // View mode state (grid vs list)
   const [viewMode, setViewMode] = useState(() => {
@@ -216,7 +218,11 @@ function App() {
     }
 
     try {
-      const data = await fetchNews(settings.sources);
+      setProgress({ current: 0, total: settings.sources.length });
+
+      const data = await fetchNews(settings.sources, (current, total) => {
+        setProgress({ current, total });
+      });
 
       const filteredBySource = data.filter(item =>
         settings.enabledSources.includes(item.sourceId)
@@ -260,8 +266,9 @@ function App() {
     } finally {
       if (showLoading) setLoading(false);
       setBackgroundRefreshing(false);
+      setProgress({ current: 0, total: 0 });
     }
-  }, [scrapeImages, readIds]);
+  }, [scrapeImages, readIds, settings.sources, settings.enabledSources]);
 
   // Initial load
   useEffect(() => {
@@ -435,6 +442,16 @@ function App() {
                 <RefreshCw size={12} className="spin" />
                 আপডেট চেক করা হচ্ছে...
               </span>
+            )}
+
+            {progress.total > 0 && (loading || backgroundRefreshing) && (
+              <div style={{ width: '200px' }}>
+                <ProgressBar
+                  current={progress.current}
+                  total={progress.total}
+                  label="আপডেট হচ্ছে..."
+                />
+              </div>
             )}
           </div>
           <div className="header-actions">

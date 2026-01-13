@@ -658,14 +658,19 @@ const fetchSource = async (source) => {
   return uniqueItems;
 };
 
-export const fetchNews = async (customSources = null) => {
+export const fetchNews = async (customSources = null, onProgress = null) => {
   const sourcesToFetch = customSources || DEFAULT_SOURCES;
   console.log(`🔄 Fetching news from ${sourcesToFetch.length} sources...`);
   const allNews = [];
 
+  let completed = 0;
   for (const source of sourcesToFetch) {
     const items = await fetchSource(source);
     allNews.push(...items);
+    completed++;
+    if (onProgress) {
+      onProgress(completed, sourcesToFetch.length);
+    }
     await delay(RATE_LIMIT_DELAY);
   }
 
