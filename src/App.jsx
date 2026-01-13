@@ -6,6 +6,7 @@ import NewsModal from './components/NewsModal';
 import Settings from './components/Settings';
 import TrendingBar from './components/TrendingBar';
 import StatsModal from './components/StatsModal';
+import TopicManager from './components/TopicManager';
 import { fetchNews, searchAllSources, DEFAULT_SOURCES } from './services/newsService';
 import ProgressBar from './components/ProgressBar';
 import { scrapeImagesForArticles } from './services/imageScraper';
@@ -48,6 +49,17 @@ function App() {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [showTopicManager, setShowTopicManager] = useState(false);
+
+  // Followed Topics state
+  const [followedTopics, setFollowedTopics] = useState(() => {
+    try {
+      const saved = localStorage.getItem('followed_topics');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const [allNews, setAllNews] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
@@ -140,6 +152,20 @@ function App() {
       return merged;
     });
   }, []);
+
+  const handleAddTopic = (topic) => {
+    if (!followedTopics.includes(topic)) {
+      const updated = [...followedTopics, topic];
+      setFollowedTopics(updated);
+      localStorage.setItem('followed_topics', JSON.stringify(updated));
+    }
+  };
+
+  const handleRemoveTopic = (topic) => {
+    const updated = followedTopics.filter(t => t !== topic);
+    setFollowedTopics(updated);
+    localStorage.setItem('followed_topics', JSON.stringify(updated));
+  };
 
   const loadMoreRef = useCallback(node => {
     if (loading || loadingMore) return;
@@ -301,6 +327,15 @@ function App() {
 
     if (selectedCategory === 'Saved') {
       result = result.filter(item => bookmarks.has(item.id));
+    } else if (selectedCategory === 'Following') {
+      if (followedTopics.length > 0) {
+        result = result.filter(item => {
+          const text = (item.title + ' ' + (item.content || '')).toLowerCase();
+          return followedTopics.some(topic => text.includes(topic.toLowerCase()));
+        });
+      } else {
+        result = []; // No topics followed
+      }
     } else if (selectedCategory !== 'All') {
       result = result.filter((item) => item.category === selectedCategory);
     }
@@ -320,7 +355,11 @@ function App() {
   useEffect(() => {
     setPage(1);
     setHasMore(true);
-  }, [searchQuery, selectedCategory]);
+    // If user switches to Following and has no topics, prompt them
+    if (selectedCategory === 'Following' && followedTopics.length === 0) {
+      setShowTopicManager(true);
+    }
+  }, [searchQuery, selectedCategory, followedTopics.length]);
 
   // Paginate displayed news
   useEffect(() => {
@@ -414,6 +453,7 @@ function App() {
       <FilterBar
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
+        onManageTopics={() => setShowTopicManager(true)}
       />
 
       <TrendingBar
@@ -532,7 +572,16 @@ function App() {
           </>
         ) : (
           <div className="no-results">
-            <p>আপনার খোঁজা অনুযায়ী কোনো খবর পাওয়া যায়নি।</p>
+            {selectedCategory === 'Following' && followedTopics.length === 0 ? (
+              <div style={{ textAlign: 'center' }}>
+                <p>আপনি এখনো কোনো টপিক ফলো করেননি।</p>
+                <button className="btn-primary" onClick={() => setShowTopicManager(true)} style={{ marginTop: '10px' }}>
+                  টপিক যোগ করুন
+                </button>
+              </div>
+            ) : (
+              <p>আপনার খোঁজা অনুযায়ী কোনো খবর পাওয়া যায়নি।</p>
+            )}
           </div>
         )}
       </main>
@@ -549,6 +598,8 @@ function App() {
           onClose={() => setSelectedNews(null)}
           isBookmarked={bookmarks.has(selectedNews.id)}
           onToggleBookmark={() => toggleBookmark(selectedNews.id)}
+          allNews={allNews}
+          onArticleClick={handleCardClick}
         />
       )}
 
@@ -567,6 +618,16 @@ function App() {
           onClose={() => setShowStats(false)}
           readIds={readIds}
           allNews={allNews}
+        />
+      )}
+
+      {showTopicManager && (
+        <TopicManager
+          isOpen={showTopicManager}
+          onClose={() => setShowTopicManager(false)}
+          topics={followedTopics}
+          onAddTopic={handleAddTopic}
+          onRemoveTopic={handleRemoveTopic}
         />
       )}
     </div>

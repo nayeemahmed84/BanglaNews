@@ -155,18 +155,27 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
         alert('পঠিত ইতিহাস সফলভাবে মুছে ফেলা হয়েছে');
     };
 
-    const handleExportSettings = () => {
-        const dataStr = JSON.stringify(settings, null, 2);
+    const handleExportBackup = () => {
+        const backup = {
+            settings: settings,
+            readIds: JSON.parse(localStorage.getItem('read_news_ids') || '[]'),
+            bookmarks: JSON.parse(localStorage.getItem('bookmarked_news_ids') || '[]'),
+            followedTopics: JSON.parse(localStorage.getItem('followed_topics') || '[]'),
+            version: 1,
+            timestamp: new Date().toISOString()
+        };
+
+        const dataStr = JSON.stringify(backup, null, 2);
         const dataBlob = new Blob([dataStr], { type: 'application/json' });
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'banglanews-settings.json';
+        link.download = `banglanews-backup-${new Date().toISOString().slice(0, 10)}.json`;
         link.click();
         URL.revokeObjectURL(url);
     };
 
-    const handleImportSettings = (e) => {
+    const handleImportBackup = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
@@ -174,16 +183,31 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
         reader.onload = (event) => {
             try {
                 const imported = JSON.parse(event.target.result);
-                // Validate imported settings basics
-                if (!imported.sources && !imported.enabledSources) throw new Error("Invalid Format");
 
-                setSettings(imported);
-                if (onSettingsChange) {
-                    onSettingsChange(imported);
+                // Check if it's a full backup (v1) or legacy settings only
+                if (imported.version && imported.settings) {
+                    // Full Restore
+                    localStorage.setItem('app_settings', JSON.stringify(imported.settings));
+
+                    if (imported.readIds) localStorage.setItem('read_news_ids', JSON.stringify(imported.readIds));
+                    if (imported.bookmarks) localStorage.setItem('bookmarked_news_ids', JSON.stringify(imported.bookmarks));
+                    if (imported.followedTopics) localStorage.setItem('followed_topics', JSON.stringify(imported.followedTopics));
+
+                    setSettings(imported.settings);
+                    if (onSettingsChange) onSettingsChange(imported.settings);
+
+                    alert('ব্যাকআপ সফলভাবে রিস্টোর করা হয়েছে। অ্যাপ রিলোড হচ্ছে...');
+                    window.location.reload();
+                } else if (imported.sources || imported.enabledSources) {
+                    // Legacy Settings Import
+                    setSettings(imported);
+                    if (onSettingsChange) onSettingsChange(imported);
+                    alert('সেটিংস সফলভাবে আমদানি করা হয়েছে');
+                } else {
+                    throw new Error("Invalid Format");
                 }
-                alert('সেটিংস সফলভাবে আমদানি করা হয়েছে');
             } catch (err) {
-                alert('সেটিংস আমদানি করতে ব্যর্থ হয়েছে: ' + err.message);
+                alert('ফাইল ইম্পোর্ট করতে ব্যর্থ হয়েছে: ' + err.message);
             }
         };
         reader.readAsText(file);
@@ -508,23 +532,24 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
                             </div>
 
                             <div className="setting-item">
-                                <h4>সেটিংস ব্যাকআপ</h4>
+                                <h4>ডেটা ব্যাকআপ ও রিস্টোর</h4>
                                 <div className="button-group">
-                                    <button className="action-btn" onClick={handleExportSettings}>
+                                    <button className="action-btn" onClick={handleExportBackup}>
                                         <Download size={18} />
-                                        এক্সপোর্ট
+                                        ব্যাকআপ নিন
                                     </button>
                                     <label className="action-btn">
                                         <Upload size={18} />
-                                        ইম্পোর্ট
+                                        রিস্টোর করুন
                                         <input
                                             type="file"
                                             accept=".json"
-                                            onChange={handleImportSettings}
+                                            onChange={handleImportBackup}
                                             style={{ display: 'none' }}
                                         />
                                     </label>
                                 </div>
+                                <p className="help-text">আপনার সেটিংস, বুকমার্ক এবং পঠিত ইতিহাস সংরক্ষণ করুন</p>
                             </div>
 
                             <div className="setting-item">

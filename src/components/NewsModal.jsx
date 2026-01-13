@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { scrapeArticle } from '../services/articleScraper';
 import ShareCard from './ShareCard';
+import RelatedNews from './RelatedNews';
 import './NewsModal.css';
 
 const formatDate = (pubDate) => {
@@ -16,7 +17,7 @@ const formatDate = (pubDate) => {
     }
 };
 
-const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark }) => {
+const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = [], onArticleClick }) => {
     const [fullContent, setFullContent] = useState(null);
     const [fullContentHtml, setFullContentHtml] = useState(null);
     const [fullImage, setFullImage] = useState(null);
@@ -42,6 +43,19 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark }) => {
             document.body.style.overflow = '';
         };
     }, []);
+
+    // Reset state when news changes
+    useEffect(() => {
+        setFullContent(null);
+        setFullContentHtml(null);
+        setFullImage(null);
+        setScraped(false);
+        setLoading(false);
+        setShowShareCard(false);
+        // scrollTo top of modal content
+        const modalContent = document.querySelector('.modal-content');
+        if (modalContent) modalContent.scrollTop = 0;
+    }, [link]);
 
     // Scrape full article on mount
     useEffect(() => {
@@ -265,6 +279,12 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark }) => {
                                 শেয়ার
                             </button>
                         </div>
+
+                        <RelatedNews
+                            currentNews={news}
+                            allNews={allNews}
+                            onArticleClick={onArticleClick || ((item) => console.log('Follow item:', item))}
+                        />
                     </div>
                 </div>
             </div>

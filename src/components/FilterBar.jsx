@@ -1,8 +1,11 @@
 import React from 'react';
 import './FilterBar.css';
 
-const CATEGORIES = ['All', 'Saved', 'Politics', 'Sports', 'Entertainment', 'Business', 'Technology', 'General'];
-const FilterBar = ({ selectedCategory, onCategoryChange }) => {
+import { Settings as SettingsIcon } from 'lucide-react';
+
+const CATEGORIES = ['All', 'Saved', 'Following', 'Politics', 'Sports', 'Entertainment', 'Business', 'Technology', 'General'];
+
+const FilterBar = ({ selectedCategory, onCategoryChange, onManageTopics }) => {
     return (
         <div className="filter-bar">
             <div className="container filter-content">
@@ -16,6 +19,17 @@ const FilterBar = ({ selectedCategory, onCategoryChange }) => {
                             {translateCategory(category)}
                         </button>
                     ))}
+
+                    {selectedCategory === 'Following' && (
+                        <button
+                            className="manage-topics-btn"
+                            onClick={onManageTopics}
+                            title="টপিক ম্যানেজ করুন"
+                        >
+                            <SettingsIcon size={14} />
+                            ম্যানেজ
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -26,6 +40,7 @@ const translateCategory = (category) => {
     const translations = {
         'All': 'সব খবর',
         'Saved': 'সংরক্ষিত',
+        'Following': 'আপনার জন্য',
         'Politics': 'রাজনীতি',
         'Sports': 'খেলা',
         'Entertainment': 'বিনোদন',
