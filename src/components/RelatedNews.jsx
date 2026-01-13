@@ -5,7 +5,11 @@ const RelatedNews = ({ currentNews, allNews, onArticleClick }) => {
     if (!currentNews || !allNews || allNews.length === 0) return null;
 
     // Find related news based on category and title keywords
-    const getRelatedNews = () => {
+    const [related, setRelated] = React.useState([]);
+
+    React.useEffect(() => {
+        if (!allNews || allNews.length === 0) return;
+
         // 1. Filter out current article
         const candidates = allNews.filter(item => item.id !== currentNews.id);
 
@@ -33,10 +37,11 @@ const RelatedNews = ({ currentNews, allNews, onArticleClick }) => {
 
         // 3. Sort by score and take top 4
         scored.sort((a, b) => b.score - a.score);
-        return scored.slice(0, 4).map(s => s.item);
-    };
+        const picks = scored.slice(0, 4).map(s => s.item);
 
-    const related = getRelatedNews();
+        setRelated(picks);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentNews.id]);
 
     if (related.length === 0) return null;
 
@@ -71,4 +76,11 @@ const RelatedNews = ({ currentNews, allNews, onArticleClick }) => {
     );
 };
 
-export default RelatedNews;
+
+
+// Custom comparator to prevent re-renders when allNews changes in background
+function arePropsEqual(prevProps, nextProps) {
+    return prevProps.currentNews.id === nextProps.currentNews.id;
+}
+
+export default React.memo(RelatedNews, arePropsEqual);

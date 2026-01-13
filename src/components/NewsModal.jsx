@@ -34,6 +34,8 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
     const [scraped, setScraped] = useState(false);
     const [showShareCard, setShowShareCard] = useState(false);
 
+
+
     const { title, link, pubDate, image, source, sourceColor, category, content, sourceId } = news;
 
     // Lock body scroll when modal is open
@@ -43,6 +45,8 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
             document.body.style.overflow = '';
         };
     }, []);
+
+
 
     // Reset state when news changes
     useEffect(() => {
@@ -124,6 +128,10 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
             window.open(link, '_blank');
         }
     };
+
+
+
+
 
     const displayImage = fullImage || image;
     const displayContent = fullContent || content;
@@ -278,6 +286,8 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
                                 <Share2 size={18} />
                                 শেয়ার
                             </button>
+
+
                         </div>
 
                         <RelatedNews

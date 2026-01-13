@@ -378,8 +378,16 @@ function App() {
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const handleCardClick = (newsItem) => {
+  // Stable ref for accessing latest state in callbacks without re-creating them
+  const stateRef = React.useRef({ readIds, settings, allNews });
+  useEffect(() => {
+    stateRef.current = { readIds, settings, allNews };
+  }, [readIds, settings, allNews]);
+
+  const handleCardClick = useCallback((newsItem) => {
     setSelectedNews(newsItem);
+
+    const { readIds, settings } = stateRef.current; // Access latest state via ref
 
     if (settings.trackReadArticles && !readIds.has(newsItem.id)) {
       const newReadIds = new Set(readIds).add(newsItem.id);
@@ -392,7 +400,7 @@ function App() {
       try { localStorage.setItem('news_cache', JSON.stringify(updated)); } catch { }
       return updated;
     });
-  };
+  }, []); // Empty dependency array = stable function reference!
 
   const handleClearSearch = useCallback(() => {
     setRemoteResults(null);
