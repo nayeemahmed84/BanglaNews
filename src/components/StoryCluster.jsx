@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, Layers } from 'lucide-react';
 import './StoryCluster.css';
 
 const StoryCluster = ({ cluster, isRead, isBookmarked, onToggleBookmark, onArticleClick }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const { primary, related, count, sources } = cluster;
 
     return (
@@ -12,10 +12,10 @@ const StoryCluster = ({ cluster, isRead, isBookmarked, onToggleBookmark, onArtic
             <div className="cluster-header" onClick={() => setIsExpanded(!isExpanded)}>
                 <div className="cluster-badge">
                     <Layers size={14} />
-                    <span>{count}টি সংবাদ উৎস</span>
+                    <span>{primary.source} এবং আরও {count - 1}টি উৎস</span>
                 </div>
                 <div className="cluster-sources">
-                    {sources.join(', ')}
+                    অন্যান্য: {sources.filter(s => s !== primary.source).join(', ')}
                 </div>
                 <button className="expand-btn">
                     {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}

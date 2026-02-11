@@ -271,27 +271,27 @@
         size: A4;
     }
 
-    /* Hide everything except the digest */
-    body>* {
+    /* Hide non-digest components */
+    .header,
+    .filter-bar,
+    .daily-digest-trigger,
+    .trending-bar,
+    .news-ticker,
+    .main-content,
+    .app-footer,
+    .scroll-top-btn,
+    .keyboard-shortcuts,
+    .news-modal,
+    .settings-modal,
+    .stats-backdrop,
+    .topic-manager-overlay {
         display: none !important;
     }
 
-    /* Specifically target #root children in React app */
-    #root>.app>*:not(.digest-overlay) {
-        display: none !important;
-    }
-
-    #root>.app>.digest-overlay {
-        display: block !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: white !important;
-        visibility: visible !important;
-        z-index: 9999 !important;
+    /* Ensure the app container doesn't restrict the digest */
+    .app {
+        height: auto !important;
+        overflow: visible !important;
     }
 
     :root {
@@ -305,13 +305,13 @@
     }
 
     .digest-overlay {
+        position: static !important;
         background: white !important;
         padding: 0 !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
+        overflow: visible !important;
+        display: block !important;
         width: 100% !important;
-        visibility: visible !important;
+        min-height: auto !important;
     }
 
     .digest-paper {
@@ -322,27 +322,36 @@
         max-width: none !important;
         background: white !important;
         margin: 0 !important;
+        min-height: auto !important;
     }
 
     .digest-header {
         border-bottom: 3pt double black !important;
+        margin-bottom: 2rem !important;
     }
 
     .masthead {
         font-size: 48pt !important;
         color: black !important;
+        margin: 0.5rem 0 !important;
+    }
+
+    .header-top {
+        margin-bottom: 1rem !important;
     }
 
     .section-title {
         break-after: avoid;
         border-bottom-color: black !important;
         color: black !important;
+        margin-top: 2rem !important;
     }
 
     .digest-article {
         break-inside: avoid-page;
         page-break-inside: avoid;
         border-bottom-color: #eee !important;
+        padding-bottom: 1rem !important;
     }
 
     .lead-image {

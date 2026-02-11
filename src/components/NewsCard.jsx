@@ -15,7 +15,7 @@ const formatDate = (pubDate) => {
     }
 };
 
-const NewsCard = ({ news, isRead, isBookmarked, isFocused, onToggleBookmark }) => {
+const NewsCard = ({ news, isRead, isBookmarked, isFocused, onToggleBookmark, onClick }) => {
     const { title, pubDate, image, source, sourceColor, category, isNew, isCached, sentiment, content } = news;
     const readTime = estimateReadingTime(content || title);
 
@@ -32,7 +32,7 @@ const NewsCard = ({ news, isRead, isBookmarked, isFocused, onToggleBookmark }) =
     if (isFocused) classes.push('keyboard-focused');
 
     return (
-        <div className={classes.join(' ')}>
+        <div className={classes.join(' ')} onClick={onClick}>
             <div className="card-image">
                 {(isRead && !isBookmarked) ? (
                     <div className="left-badge read">পড়া হয়েছে</div>
