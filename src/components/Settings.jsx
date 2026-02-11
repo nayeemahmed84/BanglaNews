@@ -15,7 +15,8 @@ const DEFAULT_SETTINGS = {
     defaultCategory: 'All',
     trackReadArticles: true,
     cacheEnabled: true,
-    imagePreloading: true
+    imagePreloading: true,
+    fontFamily: 'Inter'
 };
 
 const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
@@ -389,6 +390,19 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
                                         <span>অন্ধকার</span>
                                     </label>
                                 </div>
+                            </div>
+
+                            <div className="setting-item">
+                                <label>ফন্ট ফ্যামিলি</label>
+                                <select
+                                    value={settings.fontFamily || 'Inter'}
+                                    onChange={(e) => updateSetting('fontFamily', e.target.value)}
+                                    className="select"
+                                >
+                                    <option value="Inter">Default (Inter)</option>
+                                    <option value="'Hind Siliguri', sans-serif">Hind Siliguri (Modern sans)</option>
+                                    <option value="'Noto Serif Bengali', serif">Noto Serif Bengali (Classic serif)</option>
+                                </select>
                             </div>
 
                             <div className="setting-item">

@@ -15,7 +15,13 @@ const formatDate = (pubDate) => {
 };
 
 const NewsCard = ({ news, isRead, isBookmarked, onToggleBookmark }) => {
-    const { title, pubDate, image, source, sourceColor, category, isNew, isCached } = news;
+    const { title, pubDate, image, source, sourceColor, category, isNew, isCached, sentiment } = news;
+
+    const sentimentEmojis = {
+        positive: '😊',
+        neutral: '😐',
+        negative: '😟'
+    };
 
     const classes = ["news-card", "fade-in"];
     if (isRead) classes.push('read');
@@ -46,7 +52,14 @@ const NewsCard = ({ news, isRead, isBookmarked, onToggleBookmark }) => {
                         <span>{source}</span>
                     </div>
                 )}
-                <div className="category-badge">{category}</div>
+                <div className="card-badges">
+                    <div className="category-badge">{category}</div>
+                    {sentiment && (
+                        <div className={`sentiment-badge ${sentiment}`} title={`Sentiment: ${sentiment}`}>
+                            {sentimentEmojis[sentiment]}
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="card-content">

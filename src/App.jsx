@@ -11,7 +11,8 @@ import { fetchNews, searchAllSources, DEFAULT_SOURCES } from './services/newsSer
 import ProgressBar from './components/ProgressBar';
 import { scrapeImagesForArticles } from './services/imageScraper';
 import { getTrendingTopics } from './utils/textAnalysis';
-import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image } from 'lucide-react';
+import NewsTicker from './components/NewsTicker';
+import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image, ChevronUp } from 'lucide-react';
 import './App.css';
 
 const AUTO_REFRESH_INTERVAL = 300000; // 5 minutes
@@ -27,7 +28,8 @@ const DEFAULT_SETTINGS = {
   refreshInterval: 300000,
   itemsPerPage: 20,
   defaultCategory: 'All',
-  trackReadArticles: true
+  trackReadArticles: true,
+  fontFamily: 'Inter'
 };
 
 function App() {
@@ -80,6 +82,7 @@ function App() {
   const [remoteResults, setRemoteResults] = useState(null);
   const [lastRemoteQuery, setLastRemoteQuery] = useState('');
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // View mode state (grid vs list)
   const [viewMode, setViewMode] = useState(() => {
@@ -149,9 +152,22 @@ function App() {
         document.documentElement.removeAttribute('data-theme');
         localStorage.setItem('theme', 'light');
       }
+
+      // Apply font family
+      if (merged.fontFamily) {
+        document.body.style.fontFamily = merged.fontFamily;
+      }
+
       return merged;
     });
   }, []);
+
+  // Apply font family on mount and whenever settings change
+  useEffect(() => {
+    if (settings.fontFamily) {
+      document.body.style.fontFamily = settings.fontFamily;
+    }
+  }, [settings.fontFamily]);
 
   const handleAddTopic = (topic) => {
     if (!followedTopics.includes(topic)) {
@@ -208,7 +224,7 @@ function App() {
     setLoadingImages(false);
   }, [handleImageFound]);
 
-  const loadNews = useCallback(async (showLoading = true) => {
+  const loadNews = useCallback(async (showLoading = true, isAutoRefresh = false) => {
     if (showLoading) {
       try {
         const cached = localStorage.getItem('news_cache');
@@ -264,11 +280,20 @@ function App() {
           const existing = prevMap.get(item.id);
           const wasRead = readIds.has(item.id);
 
+          // During auto-refresh: keep existing isNew, mark truly new articles as new
+          // During manual refresh / app load: clear isNew for existing, mark new articles based on read status
+          let itemIsNew;
+          if (isAutoRefresh) {
+            itemIsNew = existing ? existing.isNew : true;
+          } else {
+            itemIsNew = existing ? (existing.isNew && !wasRead) : (!wasRead);
+          }
+
           return {
             ...item,
             image: existing?.image || item.image,
             pubDate: existing ? existing.pubDate : item.pubDate,
-            isNew: existing ? (existing.isNew && !wasRead) : (!wasRead),
+            isNew: itemIsNew,
             isCached: !!existing
           };
         });
@@ -313,7 +338,7 @@ function App() {
       console.log(`Next refresh scheduled in ${Math.round(delay / 1000)}s`);
 
       timeoutId = setTimeout(() => {
-        loadNews(false);
+        loadNews(false, true);
         scheduleRefresh();
       }, delay);
     };
@@ -368,6 +393,18 @@ function App() {
     setDisplayedNews(itemsToShow);
     setHasMore(endIndex < filteredNews.length);
   }, [filteredNews, page, settings.itemsPerPage]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Close modal on Escape key
   useEffect(() => {
@@ -467,6 +504,11 @@ function App() {
       <TrendingBar
         topics={trendingTopics}
         onTopicClick={(topic) => setSearchQuery(topic)}
+      />
+
+      <NewsTicker
+        news={allNews}
+        onNewsClick={handleCardClick}
       />
 
       <main className="container main-content">
@@ -637,6 +679,16 @@ function App() {
           onAddTopic={handleAddTopic}
           onRemoveTopic={handleRemoveTopic}
         />
+      )}
+
+      {showScrollTop && (
+        <button
+          className="scroll-top-btn"
+          onClick={scrollToTop}
+          title="উপরে যান"
+        >
+          <ChevronUp size={24} />
+        </button>
       )}
     </div>
   );

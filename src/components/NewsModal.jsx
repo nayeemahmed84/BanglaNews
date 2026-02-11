@@ -36,7 +36,13 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
 
 
 
-    const { title, link, pubDate, image, source, sourceColor, category, content, sourceId } = news;
+    const { title, link, pubDate, image, source, sourceColor, category, content, sourceId, sentiment } = news;
+
+    const sentimentEmojis = {
+        positive: '😊',
+        neutral: '😐',
+        negative: '😟'
+    };
 
     // Lock body scroll when modal is open
     useEffect(() => {
@@ -113,19 +119,29 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
         }
     };
 
-    const handleExternalLink = async (e) => {
+    const handleExternalLink = (e) => {
         e.preventDefault();
+        if (!link) return;
+
+        const openInBrowser = () => {
+            const a = document.createElement('a');
+            a.href = link;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
 
         if (window.__TAURI_INTERNALS__) {
-            try {
-                const { open } = await import('@tauri-apps/plugin-shell');
-                await open(link);
-            } catch (err) {
+            import('@tauri-apps/plugin-shell').then(({ open }) => {
+                return open(link);
+            }).catch((err) => {
                 console.error('Failed to open link via Tauri:', err);
-                window.open(link, '_blank');
-            }
+                openInBrowser();
+            });
         } else {
-            window.open(link, '_blank');
+            openInBrowser();
         }
     };
 
@@ -225,6 +241,11 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
                             </span>
 
                             <span className="modal-category">{category}</span>
+                            {sentiment && (
+                                <span className={`modal-sentiment ${sentiment}`} title={`Sentiment: ${sentiment}`}>
+                                    {sentimentEmojis[sentiment]}
+                                </span>
+                            )}
                             <div className="font-controls">
                                 <button className="font-btn" onClick={() => setFontSize(s => Math.max(12, s - 1))} title="ছোট টেক্সট">
                                     <Minus size={14} />

@@ -99,10 +99,17 @@
     font-size: 1.2rem;
 }
 
-.category-badge {
+.card-badges {
     position: absolute;
     bottom: 10px;
     right: 10px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    z-index: 8;
+}
+
+.category-badge {
     background: rgba(var(--primary-rgb), 0.9);
     color: white;
     padding: 4px 10px;
@@ -110,7 +117,31 @@
     font-size: 0.75rem;
     font-weight: 600;
     backdrop-filter: blur(4px);
-    z-index: 8;
+}
+
+.sentiment-badge {
+    background: rgba(255, 255, 255, 0.9);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(4px);
+}
+
+.sentiment-badge.positive {
+    background: rgba(220, 252, 231, 0.9);
+}
+
+.sentiment-badge.neutral {
+    background: rgba(243, 244, 246, 0.9);
+}
+
+.sentiment-badge.negative {
+    background: rgba(254, 226, 226, 0.9);
 }
 
 .card-content {

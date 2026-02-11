@@ -126,6 +126,30 @@
     font-weight: 500;
 }
 
+.modal-sentiment {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    background: var(--border);
+    box-shadow: var(--shadow-sm);
+}
+
+.modal-sentiment.positive {
+    background: #dcfce7;
+}
+
+.modal-sentiment.neutral {
+    background: #f3f4f6;
+}
+
+.modal-sentiment.negative {
+    background: #fee2e2;
+}
+
 .modal-date {
     display: flex;
     align-items: center;

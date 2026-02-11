@@ -1,3 +1,5 @@
+import { analyzeSentiment, getSmartCategory } from '../utils/textAnalysis';
+
 // Multiple CORS proxies as fallback
 const CORS_PROXIES = [
   'https://corsproxy.io/?',
@@ -323,75 +325,7 @@ const extractContent = (item) => {
   return content || 'বিস্তারিত পড়তে মূল সাইটে যান।';
 };
 
-// Weighted keyword scoring classifier (quick, offline)
-const categorize = (text) => {
-  if (!text) return 'General';
-
-  const normalize = (s) => {
-    if (!s) return '';
-    // Remove HTML tags
-    let out = s.replace(/<[^>]+>/g, ' ');
-    // Replace common punctuation with space (keep letters of any script)
-    out = out.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()"'·…—––]/g, ' ');
-    // Collapse multiple spaces
-    out = out.replace(/\s{2,}/g, ' ').trim();
-    return out.toLowerCase();
-  };
-
-  const t = normalize(String(text));
-
-  const CATEGORIES = {
-    Sports: [
-      ['খেলা', 3], ['ক্রিকেট', 5], ['ফুটবল', 5], ['ম্যাচ', 3], ['টেস্ট', 2], ['সাকিব', 3], ['মেসি', 3], ['গোল', 2], ['উইকেট', 2], ['রান', 2], ['টুর্নামেন্ট', 2]
-    ],
-    Politics: [
-      ['রাজনীতি', 5], ['নির্বাচন', 5], ['সরকার', 4], ['বিরোধী', 3], ['মন্ত্রি', 3], ['মন্ত্রিপরিষদ', 2], ['প্রধানমন্ত্রী', 4], ['বিজেপি', 3], ['বিএনপি', 4], ['আওয়ামী', 4], ['সভাপতি', 2]
-    ],
-    Entertainment: [
-      ['বিনোদন', 4], ['চলচ্চিত্র', 3], ['সিনেমা', 3], ['অভিনেতা', 3], ['অভিনেত্রী', 3], ['গান', 2], ['সিরিয়াল', 2]
-    ],
-    Business: [
-      ['অর্থনীতি', 5], ['বাজেট', 4], ['শেয়ার', 4], ['স্টক', 4], ['ব্যাংক', 3], ['টাকা', 3], ['অর্থ', 3], ['বিনিয়োগ', 3]
-    ],
-    Technology: [
-      ['প্রযুক্তি', 4], ['স্মার্টফোন', 4], ['মোবাইল', 3], ['কম্পিউটার', 3], ['ইন্টারনেট', 3], ['এআই', 4], ['ai', 2]
-    ],
-    Health: [
-      ['স্বাস্থ্য', 4], ['কোভিড', 4], ['ভ্যাকসিন', 4], ['রোগ', 3], ['ডায়াবেটিস', 2], ['হাসপাতাল', 2]
-    ],
-    World: [
-      ['প্রবাস', 2], ['বিশ্ব', 2], ['সংঘর্ষ', 3], ['আন্তর্জাতিক', 4], ['যুক্তরাষ্ট্র', 2], ['ভারত', 2]
-    ],
-    Lifestyle: [
-      ['লাইফস্টাইল', 3], ['ভ্রমণ', 3], ['রান্না', 2], ['ফ্যাশন', 3]
-    ]
-  };
-
-  const scores = {};
-  for (const [cat, keywords] of Object.entries(CATEGORIES)) {
-    let score = 0;
-    for (const [kw, w] of keywords) {
-      if (t.includes(kw)) {
-        // Count occurrences roughly
-        const occurrences = (t.split(kw).length - 1) || 1;
-        score += w * occurrences;
-      }
-    }
-    scores[cat] = score;
-  }
-
-  // Pick highest scoring category
-  const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const [bestCat, bestScore] = entries[0];
-
-  // If there is no signal at all, log sample and fallback to General
-  if (!bestScore) {
-    try { console.debug('[categorize] no-signal', { text: t.slice(0, 200), scores }); } catch (e) { }
-    return 'General';
-  }
-
-  return bestCat;
-};
+// Categorization moved to textAnalysis.js
 
 // Scrape homepage for headlines
 const scrapeHomepage = async (source) => {
@@ -528,7 +462,8 @@ const scrapeHomepage = async (source) => {
         source: source.name,
         sourceId: source.id,
         sourceColor: source.color,
-        category: categorize(title + ' ' + snippet)
+        category: getSmartCategory(title + ' ' + snippet),
+        sentiment: analyzeSentiment(title + ' ' + snippet)
       });
     });
 
@@ -606,7 +541,8 @@ const fetchFromRSS = async (source, options = {}) => {
         source: source.name,
         sourceId: source.id,
         sourceColor: source.color,
-        category: categorize(title + " " + content)
+        category: getSmartCategory(title + " " + content),
+        sentiment: analyzeSentiment(title + " " + content)
       });
     });
 
