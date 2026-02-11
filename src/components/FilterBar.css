@@ -72,3 +72,9 @@
     border-color: var(--primary);
     color: var(--primary);
 }
+
+[data-theme='dark'] .manage-topics-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+}

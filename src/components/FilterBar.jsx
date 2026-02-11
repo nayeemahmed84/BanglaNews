@@ -3,7 +3,7 @@ import './FilterBar.css';
 
 import { Settings as SettingsIcon } from 'lucide-react';
 
-const CATEGORIES = ['All', 'Saved', 'Following', 'Politics', 'Sports', 'Entertainment', 'Business', 'Technology', 'General'];
+const CATEGORIES = ['All', 'Saved', 'Offline', 'Following', 'Politics', 'Sports', 'Entertainment', 'Business', 'Technology', 'General'];
 
 const FilterBar = ({ selectedCategory, onCategoryChange, onManageTopics }) => {
     return (
@@ -40,6 +40,7 @@ const translateCategory = (category) => {
     const translations = {
         'All': 'সব খবর',
         'Saved': 'সংরক্ষিত',
+        'Offline': 'অফলাইন',
         'Following': 'আপনার জন্য',
         'Politics': 'রাজনীতি',
         'Sports': 'খেলা',

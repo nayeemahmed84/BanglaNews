@@ -7,12 +7,17 @@ import Settings from './components/Settings';
 import TrendingBar from './components/TrendingBar';
 import StatsModal from './components/StatsModal';
 import TopicManager from './components/TopicManager';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
 import { fetchNews, searchAllSources, DEFAULT_SOURCES } from './services/newsService';
 import ProgressBar from './components/ProgressBar';
 import { scrapeImagesForArticles } from './services/imageScraper';
+import { getOfflineArticles } from './services/offlineStorage';
+import { clusterArticles } from './utils/storyClustering';
+import StoryCluster from './components/StoryCluster';
+import DailyDigest from './components/DailyDigest';
 import { getTrendingTopics } from './utils/textAnalysis';
 import NewsTicker from './components/NewsTicker';
-import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image, ChevronUp } from 'lucide-react';
+import { RefreshCw, LayoutGrid, Wifi, WifiOff, Loader, Image, ChevronUp, Layers, BookOpen } from 'lucide-react';
 import './App.css';
 
 const AUTO_REFRESH_INTERVAL = 300000; // 5 minutes
@@ -25,6 +30,8 @@ const DEFAULT_SETTINGS = {
   fontSize: 16,
   viewDensity: 'comfortable',
   autoRefresh: true,
+  showSourceReliability: true,
+  enableClustering: true,
   refreshInterval: 300000,
   itemsPerPage: 20,
   defaultCategory: 'All',
@@ -52,6 +59,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const [showTopicManager, setShowTopicManager] = useState(false);
+  const [showDigest, setShowDigest] = useState(false);
 
   // Followed Topics state
   const [followedTopics, setFollowedTopics] = useState(() => {
@@ -83,6 +91,13 @@ function App() {
   const [lastRemoteQuery, setLastRemoteQuery] = useState('');
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [lastVisitTime, setLastVisitTime] = useState(() => {
+    const saved = localStorage.getItem('last_visit_time');
+    return saved ? parseInt(saved, 10) : Date.now();
+  });
+  const [offlineNews, setOfflineNews] = useState([]);
 
   // View mode state (grid vs list)
   const [viewMode, setViewMode] = useState(() => {
@@ -115,6 +130,20 @@ function App() {
       return new Set();
     }
   });
+
+  const logReadActivity = useCallback((id) => {
+    try {
+      const savedLog = localStorage.getItem('read_activity_log');
+      const log = savedLog ? JSON.parse(savedLog) : {};
+      const today = new Date().toISOString().split('T')[0];
+
+      if (!log[today]) log[today] = [];
+      if (!log[today].includes(id)) {
+        log[today].push(id);
+        localStorage.setItem('read_activity_log', JSON.stringify(log));
+      }
+    } catch (e) { console.error('Failed to log activity', e); }
+  }, []);
 
   // Calculate trending topics from allNews
   const trendingTopics = useMemo(() => {
@@ -283,6 +312,28 @@ function App() {
           // During auto-refresh: keep existing isNew, mark truly new articles as new
           // During manual refresh / app load: clear isNew for existing, mark new articles based on read status
           let itemIsNew;
+          let isUpdated = false;
+          let revisions = existing?.revisions || [];
+
+          if (existing) {
+            // Check for updates
+            const contentChanged = item.content !== existing.content;
+            const titleChanged = item.title !== existing.title;
+
+            if (contentChanged || titleChanged) {
+              isUpdated = true;
+              // Only store a new revision if content is significantly different
+              const lastRevision = revisions[revisions.length - 1];
+              if (!lastRevision || lastRevision.content !== item.content) {
+                revisions.push({
+                  title: existing.title,
+                  content: existing.content,
+                  updatedAt: Date.now()
+                });
+              }
+            }
+          }
+
           if (isAutoRefresh) {
             itemIsNew = existing ? existing.isNew : true;
           } else {
@@ -294,7 +345,10 @@ function App() {
             image: existing?.image || item.image,
             pubDate: existing ? existing.pubDate : item.pubDate,
             isNew: itemIsNew,
-            isCached: !!existing
+            isCached: !!existing,
+            isUpdated,
+            revisions,
+            isRead: wasRead
           };
         });
 
@@ -324,6 +378,8 @@ function App() {
   // Initial load
   useEffect(() => {
     loadNews();
+    // Update last visit for next time
+    localStorage.setItem('last_visit_time', Date.now().toString());
   }, [loadNews]);
 
   // Auto-refresh with jitter
@@ -346,12 +402,27 @@ function App() {
     return () => clearTimeout(timeoutId);
   }, [autoRefresh, loadNews, settings.refreshInterval]);
 
+  // Fetch offline articles when category changes to 'Offline'
+  useEffect(() => {
+    if (selectedCategory === 'Offline') {
+      const fetchOffline = async () => {
+        const articles = await getOfflineArticles();
+        setOfflineNews(articles);
+      };
+      fetchOffline();
+    } else {
+      setOfflineNews([]); // Clear offline news if not in offline category
+    }
+  }, [selectedCategory]);
+
   // Filter news when category or search changes
   useEffect(() => {
     let result = allNews;
 
     if (selectedCategory === 'Saved') {
       result = result.filter(item => bookmarks.has(item.id));
+    } else if (selectedCategory === 'Offline') {
+      result = offlineNews;
     } else if (selectedCategory === 'Following') {
       if (followedTopics.length > 0) {
         result = result.filter(item => {
@@ -374,7 +445,7 @@ function App() {
     }
 
     setFilteredNews(result);
-  }, [searchQuery, selectedCategory, allNews, bookmarks]);
+  }, [searchQuery, selectedCategory, allNews, bookmarks, offlineNews]);
 
   // Handle pagination reset on filter change
   useEffect(() => {
@@ -386,13 +457,33 @@ function App() {
     }
   }, [searchQuery, selectedCategory, followedTopics.length]);
 
+  // Cluster news if enabled
+  const clusteredNews = useMemo(() => {
+    let result;
+    if (!settings.enableClustering || selectedCategory === 'Offline' || searchQuery) {
+      result = filteredNews.map(n => ({ id: n.id, primary: n, related: [], count: 1, isCluster: false }));
+    } else {
+      result = clusterArticles(filteredNews);
+    }
+
+    // Inject coverage data into primary items
+    return result.map(cluster => ({
+      ...cluster,
+      primary: {
+        ...cluster.primary,
+        coverageCount: cluster.count,
+        isReliable: settings.showSourceReliability && (cluster.count > 2 || ['Prothom Alo', 'BBC Bangla'].includes(cluster.primary.source))
+      }
+    }));
+  }, [filteredNews, settings.enableClustering, selectedCategory, searchQuery, settings.showSourceReliability]);
+
   // Paginate displayed news
   useEffect(() => {
-    const endIndex = page * settings.itemsPerPage;
-    const itemsToShow = filteredNews.slice(0, endIndex);
-    setDisplayedNews(itemsToShow);
-    setHasMore(endIndex < filteredNews.length);
-  }, [filteredNews, page, settings.itemsPerPage]);
+    const start = 0;
+    const end = page * settings.itemsPerPage;
+    setDisplayedNews(clusteredNews.slice(start, end));
+    setHasMore(end < clusteredNews.length);
+  }, [clusteredNews, page, settings.itemsPerPage]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -405,15 +496,6 @@ function App() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  // Close modal on Escape key
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') setSelectedNews(null);
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, []);
 
   // Stable ref for accessing latest state in callbacks without re-creating them
   const stateRef = React.useRef({ readIds, settings, allNews });
@@ -430,6 +512,7 @@ function App() {
       const newReadIds = new Set(readIds).add(newsItem.id);
       setReadIds(newReadIds);
       localStorage.setItem('read_news_ids', JSON.stringify([...newReadIds]));
+      logReadActivity(newsItem.id);
     }
 
     setAllNews(prev => {
@@ -437,7 +520,97 @@ function App() {
       try { localStorage.setItem('news_cache', JSON.stringify(updated)); } catch { }
       return updated;
     });
-  }, []); // Empty dependency array = stable function reference!
+  }, [logReadActivity]); // Added logReadActivity to deps
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Skip if typing in an input
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      const key = e.key.toLowerCase();
+
+      // ? — show shortcuts help
+      if (key === '?' || (e.shiftKey && key === '/')) {
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
+        return;
+      }
+
+      // Escape — close modals
+      if (e.key === 'Escape') {
+        if (showShortcuts) { setShowShortcuts(false); return; }
+        if (selectedNews) { setSelectedNews(null); return; }
+        setFocusedIndex(-1);
+        return;
+      }
+
+      // If modal is open, arrow keys navigate articles
+      if (selectedNews) {
+        const idx = displayedNews.findIndex(n => n.id === selectedNews.id);
+        if (e.key === 'ArrowLeft' && idx > 0) {
+          e.preventDefault();
+          const prev = displayedNews[idx - 1];
+          handleCardClick(prev);
+        } else if (e.key === 'ArrowRight' && idx < displayedNews.length - 1) {
+          e.preventDefault();
+          const next = displayedNews[idx + 1];
+          handleCardClick(next);
+        } else if (key === 'b') {
+          toggleBookmark(selectedNews.id);
+        }
+        return;
+      }
+
+      // J — next card
+      if (key === 'j') {
+        e.preventDefault();
+        setFocusedIndex(prev => {
+          const next = Math.min(prev + 1, displayedNews.length - 1);
+          // Scroll card into view
+          setTimeout(() => {
+            const cards = document.querySelectorAll('.news-card');
+            cards[next]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 50);
+          return next;
+        });
+      }
+
+      // K — previous card
+      if (key === 'k') {
+        e.preventDefault();
+        setFocusedIndex(prev => {
+          const next = Math.max(prev - 1, 0);
+          setTimeout(() => {
+            const cards = document.querySelectorAll('.news-card');
+            cards[next]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 50);
+          return next;
+        });
+      }
+
+      // O or Enter — open focused card
+      if ((key === 'o' || key === 'enter') && focusedIndex >= 0 && focusedIndex < displayedNews.length) {
+        e.preventDefault();
+        handleCardClick(displayedNews[focusedIndex]);
+      }
+
+      // B — bookmark focused card
+      if (key === 'b' && focusedIndex >= 0 && focusedIndex < displayedNews.length) {
+        toggleBookmark(displayedNews[focusedIndex].id);
+      }
+
+      // R — refresh
+      if (key === 'r' && !loading) {
+        e.preventDefault();
+        loadNews();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNews, displayedNews, focusedIndex, showShortcuts, loading, handleCardClick, toggleBookmark, loadNews]); // Empty dependency array = stable function reference!
 
   const handleClearSearch = useCallback(() => {
     setRemoteResults(null);
@@ -487,19 +660,33 @@ function App() {
       <Header
         onSearch={setSearchQuery}
         searchQuery={searchQuery}
-        onHomeClick={handleGoHome}
-        remoteSearching={remoteSearching}
         onSearchSubmit={handleSearchSubmit}
+        remoteSearching={remoteSearching}
         onClearSearch={handleClearSearch}
         onSettingsClick={() => setShowSettings(true)}
         onStatsClick={() => setShowStats(true)}
+        loading={loading || backgroundRefreshing}
+        error={error}
+        onHomeClick={handleGoHome}
+        onRefresh={() => loadNews()}
+        viewMode={viewMode}
+        onViewModeToggle={toggleViewMode}
       />
+
+
 
       <FilterBar
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
         onManageTopics={() => setShowTopicManager(true)}
       />
+
+      <div className="daily-digest-trigger container">
+        <button className="digest-btn" onClick={() => setShowDigest(true)}>
+          <BookOpen size={18} />
+          <span>আজকের বিশেষ সংস্করণ (Daily Digest)</span>
+        </button>
+      </div>
 
       <TrendingBar
         topics={trendingTopics}
@@ -587,23 +774,51 @@ function App() {
         ) : displayedNews.length > 0 ? (
           <>
             <div className={`news-grid view-density-${settings.viewDensity} ${viewMode}-view`}>
-              {displayedNews.map((item, index) => (
-                <div
-                  key={item.id + '-' + index}
-                  onClick={() => handleCardClick(item)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <NewsCard
-                    news={item}
-                    isRead={readIds.has(item.id)}
-                    isBookmarked={bookmarks.has(item.id)}
-                    onToggleBookmark={(e) => {
-                      e.stopPropagation();
-                      toggleBookmark(item.id);
-                    }}
-                  />
-                </div>
-              ))}
+              {displayedNews.map((item, index) => {
+                const isItemOlderThanVisit = new Date(item.pubDate).getTime() < lastVisitTime;
+                const prevItemOlder = index > 0 && new Date(displayedNews[index - 1].pubDate).getTime() < lastVisitTime;
+                const showSeparator = index > 0 && isItemOlderThanVisit && !prevItemOlder;
+
+                return (
+                  <React.Fragment key={item.id + '-' + index}>
+                    {showSeparator && (
+                      <div className="new-separator">
+                        <span>আগের খবর</span>
+                      </div>
+                    )}
+
+                    {item.isCluster ? (
+                      <StoryCluster
+                        cluster={item}
+                        isRead={readIds.has(item.primary.id)}
+                        isBookmarked={bookmarks.has(item.primary.id)}
+                        onToggleBookmark={(e) => {
+                          e.stopPropagation();
+                          toggleBookmark(item.primary.id);
+                        }}
+                        onArticleClick={handleCardClick}
+                      />
+                    ) : (
+                      <div
+                        onClick={() => { setFocusedIndex(index); handleCardClick(item.primary); }}
+                        style={{ cursor: 'pointer' }}
+                        className={focusedIndex === index ? 'keyboard-focus-wrapper' : ''}
+                      >
+                        <NewsCard
+                          news={item.primary}
+                          isRead={readIds.has(item.primary.id)}
+                          isBookmarked={bookmarks.has(item.primary.id)}
+                          isFocused={focusedIndex === index}
+                          onToggleBookmark={(e) => {
+                            e.stopPropagation();
+                            toggleBookmark(item.primary.id);
+                          }}
+                        />
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
 
             <div ref={loadMoreRef} className="load-more-trigger">
@@ -650,6 +865,16 @@ function App() {
           onToggleBookmark={() => toggleBookmark(selectedNews.id)}
           allNews={allNews}
           onArticleClick={handleCardClick}
+          onPrev={() => {
+            const idx = displayedNews.findIndex(n => n.id === selectedNews.id);
+            if (idx > 0) handleCardClick(displayedNews[idx - 1]);
+          }}
+          onNext={() => {
+            const idx = displayedNews.findIndex(n => n.id === selectedNews.id);
+            if (idx < displayedNews.length - 1) handleCardClick(displayedNews[idx + 1]);
+          }}
+          hasPrev={displayedNews.findIndex(n => n.id === selectedNews.id) > 0}
+          hasNext={displayedNews.findIndex(n => n.id === selectedNews.id) < displayedNews.length - 1}
         />
       )}
 
@@ -690,6 +915,16 @@ function App() {
           <ChevronUp size={24} />
         </button>
       )}
+
+      {showShortcuts && (
+        <KeyboardShortcuts onClose={() => setShowShortcuts(false)} />
+      )}
+      <DailyDigest
+        isOpen={showDigest}
+        onClose={() => setShowDigest(false)}
+        news={allNews}
+        categories={['All', 'Politics', 'Sports', 'Entertainment', 'Business', 'Technology', 'General']}
+      />
     </div>
   );
 }

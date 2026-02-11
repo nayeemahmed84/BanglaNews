@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Clock, Share2, Loader, Image, Plus, Minus, Bookmark } from 'lucide-react';
+import { X, ExternalLink, Clock, Share2, Loader, Image, Plus, Minus, Bookmark, ChevronLeft, ChevronRight, History, RotateCcw, Wifi, WifiOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { scrapeArticle } from '../services/articleScraper';
+import { estimateReadingTime } from '../utils/readingTime';
+import { saveForOffline, removeOfflineArticle, isArticleSaved } from '../services/offlineStorage';
 import ShareCard from './ShareCard';
 import RelatedNews from './RelatedNews';
 import './NewsModal.css';
@@ -17,10 +19,12 @@ const formatDate = (pubDate) => {
     }
 };
 
-const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = [], onArticleClick }) => {
+const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = [], onArticleClick, onPrev, onNext, hasPrev, hasNext }) => {
     const [fullContent, setFullContent] = useState(null);
     const [fullContentHtml, setFullContentHtml] = useState(null);
     const [fullImage, setFullImage] = useState(null);
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
     const [fontSize, setFontSize] = useState(() => {
         try {
             const saved = localStorage.getItem('news_font_size');
@@ -33,6 +37,46 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
     const [loading, setLoading] = useState(false);
     const [scraped, setScraped] = useState(false);
     const [showShareCard, setShowShareCard] = useState(false);
+    const [savedOffline, setSavedOffline] = useState(false);
+    const [showRevisions, setShowRevisions] = useState(false);
+
+    // Check offline status on mount
+    useEffect(() => {
+        const checkStatus = async () => {
+            if (news.id) {
+                const saved = await isArticleSaved(news.id);
+                setSavedOffline(saved);
+            }
+        };
+        checkStatus();
+    }, [news.id]);
+
+    const toggleOffline = async () => {
+        try {
+            if (savedOffline) {
+                await removeOfflineArticle(news.id);
+                setSavedOffline(false);
+            } else {
+                setLoading(true);
+                // Scrape full content if not already done, to ensure offline version is complete
+                let articleToSave = { ...news };
+                if (!scraped) {
+                    const result = await scrapeArticle(link, sourceId);
+                    if (result) {
+                        articleToSave.contentHtml = result.contentHtml;
+                        articleToSave.content = result.content || content;
+                        articleToSave.image = result.image || image;
+                    }
+                }
+                const saved = await saveForOffline(articleToSave);
+                if (saved) setSavedOffline(true);
+            }
+        } catch (err) {
+            console.error('Offline toggle failed:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
 
@@ -145,6 +189,36 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
         }
     };
 
+    // Swipe handlers
+    const minSwipeDistance = 50;
+
+    const onTouchStart = (e) => {
+        setTouchEnd(null);
+        setTouchStart(e.targetTouches[0].clientX);
+    };
+
+    const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+
+    const onTouchEnd = () => {
+        if (!touchStart || !touchEnd) return;
+        const distance = touchStart - touchEnd;
+        const isLeftSwipe = distance > minSwipeDistance;
+        const isRightSwipe = distance < -minSwipeDistance;
+
+        if (isLeftSwipe && hasNext) onNext();
+        if (isRightSwipe && hasPrev) onPrev();
+    };
+
+    // Modal navigation keys
+    useEffect(() => {
+        const handleKeys = (e) => {
+            if (e.key === 'ArrowLeft' && hasPrev) onPrev();
+            if (e.key === 'ArrowRight' && hasNext) onNext();
+        };
+        window.addEventListener('keydown', handleKeys);
+        return () => window.removeEventListener('keydown', handleKeys);
+    }, [hasPrev, hasNext, onPrev, onNext]);
+
 
 
 
@@ -222,7 +296,25 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
 
     return (
         <>
-            <div className="modal-backdrop" onClick={handleBackdropClick}>
+            <div
+                className="modal-backdrop"
+                onClick={handleBackdropClick}
+                onTouchStart={onTouchStart}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
+            >
+                {hasPrev && (
+                    <button className="nav-btn prev" onClick={onPrev} title="আগের খবর">
+                        <ChevronLeft size={32} />
+                    </button>
+                )}
+
+                {hasNext && (
+                    <button className="nav-btn next" onClick={onNext} title="পরবর্তী খবর">
+                        <ChevronRight size={32} />
+                    </button>
+                )}
+
                 <div className="modal-content">
                     <button className="modal-close" onClick={onClose}>
                         <X size={24} />
@@ -246,6 +338,24 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
                                     {sentimentEmojis[sentiment]}
                                 </span>
                             )}
+                            {news.isReliable && (
+                                <>
+                                    <span className="dot">•</span>
+                                    <span className="reliability-badge verified" title="নির্ভরযোগ্য সূত্র">
+                                        <ShieldCheck size={12} />
+                                        ভেরিফাইড
+                                    </span>
+                                </>
+                            )}
+                            {news.isUpdated && (
+                                <>
+                                    <span className="dot">•</span>
+                                    <span className="reliability-badge updated" title="সংবাদটি আপডেট করা হয়েছে">
+                                        <RotateCcw size={12} />
+                                        আপডেট
+                                    </span>
+                                </>
+                            )}
                             <div className="font-controls">
                                 <button className="font-btn" onClick={() => setFontSize(s => Math.max(12, s - 1))} title="ছোট টেক্সট">
                                     <Minus size={14} />
@@ -258,6 +368,10 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
                                 <Clock size={14} />
                                 {formatDate(pubDate)}
                             </span>
+                            {(() => {
+                                const rt = estimateReadingTime(displayContent || content || title);
+                                return rt.label ? <span className="modal-reading-time">📖 {rt.label}</span> : null;
+                            })()}
                         </div>
 
                         <h2 className="modal-title">{title}</h2>
@@ -269,15 +383,41 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
                             </div>
                         ) : (
                             <div className="modal-description" style={descriptionStyle}>
-                                {sanitizedHtml ? (
-                                    <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
-                                ) : displayContentHtml ? (
-                                    // show raw HTML if sanitizer not ready
-                                    <div dangerouslySetInnerHTML={{ __html: displayContentHtml }} />
+                                {/* Article Content */}
+                                {!showRevisions ? (
+                                    <div className="modal-article-body" style={{ fontSize: `${fontSize}px` }}> {/* Assuming fontFamily is defined elsewhere or removed */}
+                                        {sanitizedHtml ? (
+                                            <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+                                        ) : displayContentHtml ? (
+                                            // show raw HTML if sanitizer not ready
+                                            <div dangerouslySetInnerHTML={{ __html: displayContentHtml }} />
+                                        ) : (
+                                            formatTextToParagraphs(displayContent).map((paragraph, index) => (
+                                                paragraph && <p key={index}>{paragraph}</p>
+                                            ))
+                                        )}
+                                    </div>
                                 ) : (
-                                    formatTextToParagraphs(displayContent).map((paragraph, index) => (
-                                        paragraph && <p key={index}>{paragraph}</p>
-                                    ))
+                                    <div className="revisions-view fade-in">
+                                        <h3>সংবাদের ইতিহাস</h3>
+                                        {news.revisions.map((rev, i) => (
+                                            <div key={i} className="revision-item">
+                                                <div className="rev-header">
+                                                    <span className="rev-date">{new Date(rev.updatedAt).toLocaleString('bn-BD')}</span>
+                                                    <span className="rev-label">সংস্করণ #{news.revisions.length - i}</span>
+                                                </div>
+                                                <h4 className="rev-title">{rev.title}</h4>
+                                                <div className="rev-body" dangerouslySetInnerHTML={{ __html: rev.content }} />
+                                            </div>
+                                        ))}
+                                        <div className="revision-item current">
+                                            <div className="rev-header">
+                                                <span className="rev-date">বর্তমান সংস্করণ</span>
+                                            </div>
+                                            <h4 className="rev-title">{news.title}</h4>
+                                            <div className="rev-body" dangerouslySetInnerHTML={{ __html: fullContentHtml || news.content }} />
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         )}
@@ -292,7 +432,29 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
                                 {isBookmarked ? 'সংরক্ষিত' : 'সংরক্ষণ'}
                             </button>
 
-                            <button className="btn-photo-card" onClick={() => setShowShareCard(true)}>
+                            {news.revisions?.length > 0 && (
+                                <button
+                                    className={`action-btn ${showRevisions ? 'active' : ''}`}
+                                    onClick={() => setShowRevisions(!showRevisions)}
+                                    title="পূর্ববর্তী সংস্করণগুলো দেখুন"
+                                >
+                                    <History size={20} />
+                                    <span>পূর্বের ভার্সন ({news.revisions.length})</span>
+                                </button>
+                            )}
+
+                            <button
+                                className={`action-btn ${savedOffline ? 'active' : ''}`}
+                                onClick={toggleOffline}
+                                title={savedOffline ? "অফলাইন থেকে সরান" : "অফলাইনে সেভ করুন"}
+                            >
+                                <div className={`offline-icon ${savedOffline ? 'saved' : ''}`}>
+                                    {savedOffline ? <WifiOff size={20} /> : <Wifi size={20} />}
+                                </div>
+                                <span>{savedOffline ? 'অফলাইনে আছে' : 'অফলাইন সেভ'}</span>
+                            </button>
+
+                            <button className="action-btn" onClick={() => setShowShareCard(true)}>
                                 <Image size={18} />
                                 ফটো কার্ড
                             </button>

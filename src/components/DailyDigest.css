@@ -1,0 +1,363 @@
+:root {
+    --digest-paper: #fdfaf3;
+    --digest-ink: #1a1a1a;
+    --digest-border: #1a1a1a;
+    --digest-dim: #e0ddd5;
+    --digest-muted: #666666;
+    --digest-lead: #000000;
+}
+
+[data-theme='dark'] {
+    --digest-paper: #121826;
+    --digest-ink: #e2e8f0;
+    --digest-border: #334155;
+    --digest-dim: #1e293b;
+    --digest-muted: #94a3b8;
+    --digest-lead: #ffffff;
+}
+
+.digest-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--digest-dim);
+    z-index: 3000;
+    overflow-y: auto;
+    padding: 2rem 1rem;
+    color: var(--digest-ink);
+    font-family: 'Noto Serif Bengali', serif;
+    transition: background-color 0.3s ease;
+}
+
+.digest-close-btn {
+    position: fixed;
+    top: 2rem;
+    right: 2rem;
+    width: 48px;
+    height: 48px;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 3010;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid white;
+}
+
+.digest-close-btn:hover {
+    transform: rotate(90deg) scale(1.1);
+    background: #d31b22;
+}
+
+.digest-paper {
+    max-width: 1000px;
+    margin: 0 auto;
+    background: var(--digest-paper);
+    padding: 4rem;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+    min-height: 100vh;
+    border: 1px solid var(--digest-border);
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.digest-header {
+    border-bottom: 5px double var(--digest-border);
+    margin-bottom: 3rem;
+    padding-bottom: 1.5rem;
+}
+
+.header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.masthead {
+    font-size: 5.5rem;
+    font-weight: 900;
+    text-align: center;
+    letter-spacing: -3px;
+    line-height: 0.85;
+    color: var(--digest-lead);
+    font-family: 'Noto Sans Bengali', sans-serif;
+}
+
+.volume,
+.location {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.header-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 2px solid var(--digest-border);
+    padding-top: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.header-actions {
+    display: flex;
+    gap: 20px;
+}
+
+.header-actions button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(var(--primary-rgb), 0.05);
+    border: 1px solid transparent;
+    padding: 6px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    color: var(--digest-ink);
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.header-actions button:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.digest-section {
+    margin-bottom: 4rem;
+}
+
+.section-title {
+    font-size: 1.8rem;
+    border-bottom: 3px solid var(--digest-border);
+    margin-bottom: 2rem;
+    display: inline-block;
+    padding-right: 3rem;
+    color: var(--primary);
+    font-family: 'Noto Sans Bengali', sans-serif;
+}
+
+.section-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+}
+
+.digest-article {
+    border-bottom: 1px solid var(--digest-dim);
+    padding-bottom: 2rem;
+    margin-bottom: 2rem;
+    transition: transform 0.2s ease;
+}
+
+.digest-article:hover {
+    transform: translateX(5px);
+}
+
+.digest-article:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.digest-article.lead {
+    grid-row: span 2;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.lead-image {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+    margin-bottom: 1.5rem;
+    border-radius: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] .lead-image {
+    filter: brightness(0.8) contrast(1.1);
+}
+
+.article-title {
+    font-size: 1.8rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+    font-weight: 800;
+    color: var(--digest-lead);
+}
+
+.lead .article-title {
+    font-size: 2.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.article-excerpt {
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: var(--digest-ink);
+    margin-bottom: 1.5rem;
+    text-align: justify;
+}
+
+.article-meta {
+    font-size: 0.9rem;
+    color: var(--digest-muted);
+    font-weight: 600;
+    display: flex;
+    gap: 12px;
+}
+
+.digest-footer {
+    border-top: 2px solid var(--digest-border);
+    margin-top: 5rem;
+    padding-top: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--digest-muted);
+    font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+    .digest-close-btn {
+        top: 1rem;
+        right: 1rem;
+        width: 40px;
+        height: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .masthead {
+        font-size: 3.5rem;
+    }
+
+    .section-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .digest-paper {
+        padding: 2rem;
+    }
+
+    .lead .article-title {
+        font-size: 2rem;
+    }
+
+    .lead-image {
+        height: 250px;
+    }
+
+    .header-top {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+}
+
+@media print {
+    @page {
+        margin: 1.5cm;
+        size: A4;
+    }
+
+    /* Hide everything except the digest */
+    body>* {
+        display: none !important;
+    }
+
+    /* Specifically target #root children in React app */
+    #root>.app>*:not(.digest-overlay) {
+        display: none !important;
+    }
+
+    #root>.app>.digest-overlay {
+        display: block !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        visibility: visible !important;
+        z-index: 9999 !important;
+    }
+
+    :root {
+        --digest-paper: #ffffff !important;
+        --digest-ink: #000000 !important;
+        --digest-border: #000000 !important;
+        --digest-dim: #ffffff !important;
+        --digest-muted: #333333 !important;
+        --digest-lead: #000000 !important;
+        --primary: #000000 !important;
+    }
+
+    .digest-overlay {
+        background: white !important;
+        padding: 0 !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        visibility: visible !important;
+    }
+
+    .digest-paper {
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        background: white !important;
+        margin: 0 !important;
+    }
+
+    .digest-header {
+        border-bottom: 3pt double black !important;
+    }
+
+    .masthead {
+        font-size: 48pt !important;
+        color: black !important;
+    }
+
+    .section-title {
+        break-after: avoid;
+        border-bottom-color: black !important;
+        color: black !important;
+    }
+
+    .digest-article {
+        break-inside: avoid-page;
+        page-break-inside: avoid;
+        border-bottom-color: #eee !important;
+    }
+
+    .lead-image {
+        max-height: 250pt !important;
+        filter: grayscale(1) !important;
+        box-shadow: none !important;
+    }
+
+    .digest-close-btn,
+    .header-actions {
+        display: none !important;
+    }
+
+    .article-title,
+    .article-excerpt {
+        color: black !important;
+    }
+}

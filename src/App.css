@@ -62,6 +62,13 @@
   transition: all 0.2s ease;
 }
 
+[data-theme='dark'] .auto-refresh-btn {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .auto-refresh-btn.active {
   background: linear-gradient(135deg, #10b981, #059669);
   color: white;
@@ -83,6 +90,13 @@
   color: var(--text-main);
   font-weight: 500;
   transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .refresh-btn {
+  background: #334155;
+  border-color: #475569;
+  color: #f8fafc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .refresh-btn:hover:not(:disabled) {
@@ -217,6 +231,69 @@
   }
 }
 
+.new-separator {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 1.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.daily-digest-trigger {
+  margin: 1rem auto;
+  display: flex;
+  justify-content: center;
+}
+
+.digest-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  background: linear-gradient(135deg, var(--primary), #4338ca);
+  color: white;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2);
+  transition: all 0.2s;
+}
+
+[data-theme='dark'] .digest-btn {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.digest-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(var(--primary-rgb), 0.3);
+}
+
+.new-separator::before,
+.new-separator::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.new-separator span {
+  background: var(--border);
+  padding: 4px 16px;
+  border-radius: 20px;
+  color: var(--text-muted);
+}
+
+[data-theme='dark'] .new-separator span {
+  background: var(--surface);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+}
+
 .refresh-badge {
   font-size: 0.75rem;
   color: #d97706;
@@ -227,7 +304,9 @@
   gap: 6px;
   padding: 4px 10px;
   border-radius: 20px;
-}/* List View Mode */
+}
+
+/* List View Mode */
 .news-grid.list-view {
   display: flex !important;
   flex-direction: column;
@@ -250,62 +329,63 @@
 }
 
 .news-grid.list-view .category-badge {
-    bottom: 6px;
-    right: 6px;
-    font-size: 0.65rem;
-    padding: 2px 8px;
+  bottom: 6px;
+  right: 6px;
+  font-size: 0.65rem;
+  padding: 2px 8px;
 }
 
 .news-grid.list-view .card-content {
-    padding: 1rem;
-    justify-content: center;
+  padding: 1rem;
+  justify-content: center;
 }
 
 .news-grid.list-view .card-title {
-    font-size: 1.1rem;
-    margin-bottom: 0.5rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .news-grid.list-view .card-meta {
-    margin-bottom: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
 /* View Mode Button */
 .view-mode-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 8px 10px;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .view-mode-btn:hover {
-    color: var(--primary);
-    border-color: var(--primary);
-    background: rgba(var(--primary-rgb), 0.05);
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(var(--primary-rgb), 0.05);
 }
 
 @media (max-width: 600px) {
-    .news-grid.list-view .news-card {
-        height: auto; 
-        min-height: 120px;
-    }
-    
-    .news-grid.list-view .card-image {
-        width: 120px;
-    }
+  .news-grid.list-view .news-card {
+    height: auto;
+    min-height: 120px;
+  }
 
-    .news-grid.list-view .card-title {
-        font-size: 1rem;
-    }
+  .news-grid.list-view .card-image {
+    width: 120px;
+  }
+
+  .news-grid.list-view .card-title {
+    font-size: 1rem;
+  }
 }

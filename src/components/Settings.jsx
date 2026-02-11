@@ -11,6 +11,8 @@ const DEFAULT_SETTINGS = {
     viewDensity: 'comfortable',
     autoRefresh: true,
     refreshInterval: 300000,
+    enableClustering: true,
+    showSourceReliability: true,
     itemsPerPage: 20,
     defaultCategory: 'All',
     trackReadArticles: true,
@@ -522,6 +524,32 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
                                     />
                                 </label>
                             </div>
+
+                            <div className="setting-item">
+                                <label className="toggle-label">
+                                    <span>খবর গ্রুপিং (Story Clustering)</span>
+                                    <input
+                                        type="checkbox"
+                                        className="toggle"
+                                        checked={settings.enableClustering}
+                                        onChange={(e) => updateSetting('enableClustering', e.target.checked)}
+                                    />
+                                </label>
+                                <p className="help-text">একই বিষয়ের বিভিন্ন খবরাখবর একত্রে দেখান</p>
+                            </div>
+
+                            <div className="setting-item">
+                                <label className="toggle-label">
+                                    <span>উৎস নির্ভরযোগ্যতা নির্দেশক</span>
+                                    <input
+                                        type="checkbox"
+                                        className="toggle"
+                                        checked={settings.showSourceReliability}
+                                        onChange={(e) => updateSetting('showSourceReliability', e.target.checked)}
+                                    />
+                                </label>
+                                <p className="help-text">খবরের উৎস এবং কাভারেজ সংক্রান্ত তথ্য দেখান</p>
+                            </div>
                         </div>
                     )}
 
@@ -586,8 +614,8 @@ const Settings = ({ isOpen, onClose, currentSettings, onSettingsChange }) => {
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 };
 

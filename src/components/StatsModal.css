@@ -74,6 +74,11 @@
     gap: 10px;
 }
 
+[data-theme='dark'] .stat-card {
+    background: var(--background);
+    border-color: var(--border);
+}
+
 .stat-card.blue {
     color: #3b82f6;
     background: rgba(59, 130, 246, 0.1);
@@ -150,9 +155,124 @@
 }
 
 .empty-stats {
+    padding: 3rem;
     text-align: center;
-    padding: 2rem;
     color: var(--text-muted);
+}
+
+.heatmap-section {
+    margin: 2rem 0;
+}
+
+.heatmap-section h3 {
+    font-size: 1rem;
+    color: var(--text-main);
+    margin-bottom: 1rem;
+}
+
+.heatmap-container {
+    padding: 1rem;
+    background: var(--background);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+}
+
+.heatmap-grid {
+    display: flex;
+    gap: 4px;
+    justify-content: space-between;
+}
+
+.heatmap-week {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.heatmap-day {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: all 0.2s;
+}
+
+.heatmap-day.level-0 {
+    background: var(--border);
+}
+
+[data-theme='dark'] .heatmap-day.level-0 {
+    background: #1e293b;
+    border: 1px solid #334155;
+}
+
+.heatmap-day.level-1 {
+    background: #dcfce7;
+}
+
+.heatmap-day.level-2 {
+    background: #86efac;
+}
+
+.heatmap-day.level-3 {
+    background: #22c55e;
+}
+
+.heatmap-day.level-4 {
+    background: #15803d;
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.legend-cells {
+    display: flex;
+    gap: 4px;
+}
+
+.legend-cell {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+.legend-cell.level-0 {
+    background: var(--border);
+}
+
+[data-theme='dark'] .legend-cell.level-0 {
+    background: #334155;
+}
+
+.legend-cell.level-1 {
+    background: #dcfce7;
+}
+
+.legend-cell.level-2 {
+    background: #86efac;
+}
+
+.legend-cell.level-3 {
+    background: #22c55e;
+}
+
+.legend-cell.level-4 {
+    background: #15803d;
+}
+
+@media (max-width: 640px) {
+    .heatmap-grid {
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        justify-content: flex-start;
+    }
 }
 
 .icon-gap {

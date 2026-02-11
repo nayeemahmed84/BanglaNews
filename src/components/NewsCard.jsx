@@ -1,7 +1,8 @@
 import React from 'react';
-import { Clock, Bookmark } from 'lucide-react';
+import { Clock, Bookmark, ShieldCheck, TrendingUp, Info, RotateCcw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
+import { estimateReadingTime } from '../utils/readingTime';
 import './NewsCard.css';
 
 const formatDate = (pubDate) => {
@@ -14,8 +15,9 @@ const formatDate = (pubDate) => {
     }
 };
 
-const NewsCard = ({ news, isRead, isBookmarked, onToggleBookmark }) => {
-    const { title, pubDate, image, source, sourceColor, category, isNew, isCached, sentiment } = news;
+const NewsCard = ({ news, isRead, isBookmarked, isFocused, onToggleBookmark }) => {
+    const { title, pubDate, image, source, sourceColor, category, isNew, isCached, sentiment, content } = news;
+    const readTime = estimateReadingTime(content || title);
 
     const sentimentEmojis = {
         positive: '😊',
@@ -27,6 +29,7 @@ const NewsCard = ({ news, isRead, isBookmarked, onToggleBookmark }) => {
     if (isRead) classes.push('read');
     if (isCached) classes.push('cached');
     if (isNew) classes.push('fresh');
+    if (isFocused) classes.push('keyboard-focused');
 
     return (
         <div className={classes.join(' ')}>
@@ -72,6 +75,39 @@ const NewsCard = ({ news, isRead, isBookmarked, onToggleBookmark }) => {
                         <Clock size={12} />
                         {formatDate(pubDate)}
                     </span>
+                    {readTime.label && (
+                        <>
+                            <span className="dot">•</span>
+                            <span className="reading-time">{readTime.label}</span>
+                        </>
+                    )}
+                    {news.coverageCount > 1 && (
+                        <>
+                            <span className="dot">•</span>
+                            <span className="reliability-badge top" title={`${news.coverageCount}টি উৎস হতে কাভার করা হয়েছে`}>
+                                <TrendingUp size={12} />
+                                টপ স্টোরি
+                            </span>
+                        </>
+                    )}
+                    {news.isReliable && (
+                        <>
+                            <span className="dot">•</span>
+                            <span className="reliability-badge verified" title="নির্ভরযোগ্য সূত্র">
+                                <ShieldCheck size={12} />
+                                ভেরিফাইড
+                            </span>
+                        </>
+                    )}
+                    {news.isUpdated && (
+                        <>
+                            <span className="dot">•</span>
+                            <span className="reliability-badge updated" title="সংবাদটি আপডেট করা হয়েছে">
+                                <RotateCcw size={12} />
+                                আপডেট
+                            </span>
+                        </>
+                    )}
                 </div>
 
                 <h3 className="card-title">{title}</h3>

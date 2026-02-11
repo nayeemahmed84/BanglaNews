@@ -151,16 +151,44 @@
     flex: 1;
 }
 
+.reading-time {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.reliability-badge {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.reliability-badge.top {
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+}
+
+.reliability-badge.verified {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.source-name {
+    font-weight: 700;
+}
+
 .card-meta {
     display: flex;
     align-items: center;
     gap: 8px;
     font-size: 0.8rem;
     margin-bottom: 0.75rem;
-}
-
-.source-name {
-    font-weight: 700;
 }
 
 .dot {
@@ -218,4 +246,10 @@
 
 .read-more:hover {
     text-decoration: underline;
+}
+
+.reading-time {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    white-space: nowrap;
 }

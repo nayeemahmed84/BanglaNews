@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { X, BookOpen, PieChart as PieIcon, Award, Zap } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Flame, Calendar, X, BookOpen, Award, Zap, PieChart as PieIcon } from 'lucide-react';
 import './StatsModal.css';
 
 const StatsModal = ({ isOpen, onClose, readIds, allNews }) => {
@@ -14,6 +14,10 @@ const StatsModal = ({ isOpen, onClose, readIds, allNews }) => {
         // Note: readIds might include IDs not present in current allNews if feeds updated, 
         // effectively we can only analyze what we have data for.
         const readArticles = allNews.filter(item => readIds.has(item.id));
+
+        // Read activity log for heatmap
+        const savedLog = localStorage.getItem('read_activity_log');
+        const activityLog = savedLog ? JSON.parse(savedLog) : {};
 
         // Category breakdown
         const categoryCounts = {};
@@ -50,7 +54,8 @@ const StatsModal = ({ isOpen, onClose, readIds, allNews }) => {
             totalRead,
             categoryData,
             favoriteSource,
-            level
+            level,
+            activityLog
         };
     }, [readIds, allNews]);
 
@@ -83,6 +88,12 @@ const StatsModal = ({ isOpen, onClose, readIds, allNews }) => {
                         <div className="stat-value text-sm">{stats.favoriteSource.name}</div>
                         <div className="stat-label">প্রিয় উৎস</div>
                     </div>
+                </div>
+
+                {/* Heatmap Section */}
+                <div className="heatmap-section">
+                    <h3>পড়ার ধারাবাহিকতা (গত ১২ সপ্তাহ)</h3>
+                    <ReadingHeatmap activity={stats.activityLog} />
                 </div>
 
                 {/* Chart Section */}
@@ -126,6 +137,66 @@ const StatsModal = ({ isOpen, onClose, readIds, allNews }) => {
                         </div>
                     )}
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const ReadingHeatmap = ({ activity }) => {
+    const data = useMemo(() => {
+        const weeks = [];
+        const today = new Date();
+        // Go back 11 weeks + current week = 12 weeks
+        const startDate = new Date(today);
+        startDate.setDate(today.getDate() - (11 * 7) - today.getDay());
+
+        for (let w = 0; w < 12; w++) {
+            const week = [];
+            for (let d = 0; d < 7; d++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + (w * 7) + d);
+                const dateStr = date.toISOString().split('T')[0];
+                const count = activity[dateStr] ? activity[dateStr].length : 0;
+                week.push({ date: dateStr, count });
+            }
+            weeks.push(week);
+        }
+        return weeks;
+    }, [activity]);
+
+    const getIntensity = (count) => {
+        if (count === 0) return 'level-0';
+        if (count <= 2) return 'level-1';
+        if (count <= 5) return 'level-2';
+        if (count <= 10) return 'level-3';
+        return 'level-4';
+    };
+
+    return (
+        <div className="heatmap-container">
+            <div className="heatmap-grid">
+                {data.map((week, wIdx) => (
+                    <div key={wIdx} className="heatmap-week">
+                        {week.map((day, dIdx) => (
+                            <div
+                                key={dIdx}
+                                className={`heatmap-day ${getIntensity(day.count)}`}
+                                title={`${day.date}: ${day.count} টি পঠিত`}
+                            ></div>
+                        ))}
+                    </div>
+                ))}
+            </div>
+            <div className="heatmap-legend">
+                <span>কম</span>
+                <div className="legend-cells">
+                    <div className="legend-cell level-0"></div>
+                    <div className="legend-cell level-1"></div>
+                    <div className="legend-cell level-2"></div>
+                    <div className="legend-cell level-3"></div>
+                    <div className="legend-cell level-4"></div>
+                </div>
+                <span>বেশি</span>
             </div>
         </div>
     );

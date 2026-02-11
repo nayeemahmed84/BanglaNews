@@ -1,0 +1,113 @@
+.story-cluster {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.cluster-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: rgba(var(--primary-rgb), 0.05);
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.cluster-header:hover {
+    background: rgba(var(--primary-rgb), 0.1);
+}
+
+.cluster-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: white;
+    padding: 2px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.cluster-sources {
+    flex: 1;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+.expand-btn {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.primary-article .news-card {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.primary-article .news-card:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.related-articles {
+    background: var(--background);
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--border);
+}
+
+.related-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid var(--border);
+}
+
+.related-item:last-child {
+    border-bottom: none;
+}
+
+.related-item:hover {
+    background: var(--border);
+}
+
+.related-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
+.related-source {
+    font-weight: 700;
+}
+
+.related-dot {
+    color: var(--text-muted);
+}
+
+.related-time {
+    color: var(--text-muted);
+}
+
+.related-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--text-main);
+}
