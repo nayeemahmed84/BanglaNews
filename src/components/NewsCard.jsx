@@ -48,13 +48,16 @@ const NewsCard = ({ news, isRead, isBookmarked, isFocused, onToggleBookmark, onC
                     <Bookmark size={18} fill={isBookmarked ? "currentColor" : "none"} />
                 </button>
 
-                {image ? (
-                    <img src={image} alt={title} loading="lazy" />
-                ) : (
-                    <div className="placeholder-image">
-                        <span>{source}</span>
-                    </div>
-                )}
+                <img
+                    src={image || '/placeholder-news.jpg'}
+                    alt={title}
+                    loading="lazy"
+                    onError={(e) => {
+                        if (e.target.src !== window.location.origin + '/placeholder-news.jpg') {
+                            e.target.src = '/placeholder-news.jpg';
+                        }
+                    }}
+                />
                 <div className="card-badges">
                     <div className="category-badge">{category}</div>
                     {sentiment && (

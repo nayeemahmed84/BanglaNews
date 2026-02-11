@@ -55,11 +55,18 @@ const RelatedNews = ({ currentNews, allNews, onArticleClick }) => {
                         className="related-card"
                         onClick={() => onArticleClick(item)}
                     >
-                        {item.image && (
-                            <div className="related-image">
-                                <img src={item.image} alt={item.title} loading="lazy" />
-                            </div>
-                        )}
+                        <div className="related-image">
+                            <img
+                                src={item.image || '/placeholder-news.jpg'}
+                                alt={item.title}
+                                loading="lazy"
+                                onError={(e) => {
+                                    if (e.target.src !== window.location.origin + '/placeholder-news.jpg') {
+                                        e.target.src = '/placeholder-news.jpg';
+                                    }
+                                }}
+                            />
+                        </div>
                         <div className="related-content">
                             <span className="related-source" style={{ color: item.sourceColor }}>
                                 {item.source}

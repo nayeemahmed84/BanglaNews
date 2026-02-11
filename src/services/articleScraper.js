@@ -35,7 +35,7 @@ const CONTENT_SELECTORS = {
     'bdnews24': ['.article-content', '.print-only', '.custombody'],
     'somoy-tv': ['.news-content', '.article-body', '.content'],
     'ntv': ['.news-details', '.article-content', '.content'],
-    'channel-i': ['.news-details', '.article-content'],
+    'channel-i': ['.content-inner', '.entry-content', '.news-details', '.article-content'],
     'daily-star': ['.article-content', '.story-content', '.node-content'],
     'bbc-bangla': ['[data-testid="main-content"]', 'article', 'main', '.bbc-news-article']
 };
@@ -203,11 +203,13 @@ const extractArticleContent = (html, sourceId) => {
 
     // Extract main image
     const imageSelectors = [
-        'meta[property="og:image"]', '.featured-image img', '.article-image img',
-        '.news-image img', 'article img', '.content img', '.post-thumbnail img',
-        '.main-image img', '.hero-image img', 'figure img', '.cover-image img',
+        'meta[property="og:image"]', '.featured-image img', '.featured_image img',
+        '.article-image img', '.article_image img', '.jeg_featured_img img',
+        '.news-image img', '.news_image img', 'article img', '.content img', '.post-thumbnail img',
+        '.main-image img', '.main_image img', '.hero-image img', '.hero_image img',
+        'figure img', '.cover-image img', '.cover_image img',
         // Common containers for background images
-        '.featured-image', '.article-image', '.news-image', '.hero-image', '.cover-image'
+        '.featured-image', '.featured_image', '.article-image', '.article_image', '.news-image', '.news_image', '.hero-image', '.hero_image', '.cover-image'
     ];
 
     for (const selector of imageSelectors) {
@@ -341,17 +343,18 @@ const deduplicateImages = (html, leadImageUrl, sourceId) => {
         const srcSig = getImageSignature(src);
         const dataSig = getImageSignature(dataSrc);
 
-        // Special rule for BBC Bangla and Channel i: remove the first image/figure which is usually redundant
-        const isBbcFirst = (sourceId === 'bbc-bangla' || sourceId === 'channel-i') && index === 0;
+        // Special rule for BBC Bangla and Channel i: remove the first image/figure which is usually redundant, 
+        // but ONLY if we actually have a lead image to show instead.
+        const isBbcFirst = (sourceId === 'bbc-bangla' || sourceId === 'channel-i') && index === 0 && leadImageUrl;
 
         // Deduplicate if:
         // 1. Exact match
         // 2. Fuzzy signature match
         // 3. It's the first image and we're highly suspicious (BBC/Prothom Alo often repeat lead)
-        const isMatch = isBbcFirst ||
+        const isMatch = (leadImageUrl && isBbcFirst) ||
             (leadSig && (srcSig === leadSig || dataSig === leadSig)) ||
             (src && leadImageUrl && leadImageUrl.includes(src)) ||
-            (index === 0 && srcSig.length > 20 && leadSig.includes(srcSig.slice(0, 20)));
+            (index === 0 && leadSig && srcSig.length > 20 && leadSig.includes(srcSig.slice(0, 20)));
 
         if (isMatch) {
             // Also try to remove the parent figure/div if it's just an image wrapper

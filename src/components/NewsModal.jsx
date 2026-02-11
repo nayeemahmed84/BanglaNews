@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ExternalLink, Clock, Share2, Loader, Image, Plus, Minus, Bookmark, ChevronLeft, ChevronRight, History, RotateCcw, Wifi, WifiOff } from 'lucide-react';
+import { X, ExternalLink, Clock, Share2, Loader, Image, Plus, Minus, Bookmark, ChevronLeft, ChevronRight, History, RotateCcw, Wifi, WifiOff, ShieldCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { bn } from 'date-fns/locale';
 import { scrapeArticle } from '../services/articleScraper';
@@ -129,7 +129,7 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
 
                     if (result.images && result.images.length > 0) {
                         setFullImage(result.images[0].src);
-                    } else if (result.image && !image) {
+                    } else if (result.image) {
                         setFullImage(result.image);
                     }
                 }
@@ -223,7 +223,7 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
 
 
 
-    const displayImage = fullImage || image;
+    const displayImage = fullImage || image || '/placeholder-news.jpg';
     const displayContent = fullContent || content;
 
     const formatTextToParagraphs = (text) => {
@@ -322,7 +322,17 @@ const NewsModal = ({ news, onClose, isBookmarked, onToggleBookmark, allNews = []
 
                     {displayImage && (
                         <div className="modal-image">
-                            <img src={displayImage} alt={title} onError={(e) => e.target.style.display = 'none'} />
+                            <img
+                                src={displayImage}
+                                alt={title}
+                                onError={(e) => {
+                                    if (e.target.src !== window.location.origin + '/placeholder-news.jpg') {
+                                        e.target.src = '/placeholder-news.jpg';
+                                    } else {
+                                        e.target.style.display = 'none';
+                                    }
+                                }}
+                            />
                         </div>
                     )}
 
