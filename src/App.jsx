@@ -704,31 +704,9 @@ function App() {
             <LayoutGrid size={20} className="text-muted" />
             <h2>সর্বশেষ সংবাদ</h2>
             {lastUpdated && (
-              <span className="last-updated">
+              <span className="status-chip last-updated">
                 আপডেট: {lastUpdated.toLocaleTimeString('bn-BD')}
               </span>
-            )}
-            {loadingImages && (
-              <span className="loading-images">
-                <Image size={14} className="spin" />
-                ছবি লোড হচ্ছে...
-              </span>
-            )}
-            {backgroundRefreshing && (
-              <span className="refresh-badge fade-in">
-                <RefreshCw size={12} className="spin" />
-                আপডেট চেক করা হচ্ছে...
-              </span>
-            )}
-
-            {progress.total > 0 && (loading || backgroundRefreshing) && (
-              <div style={{ width: '200px' }}>
-                <ProgressBar
-                  current={progress.current}
-                  total={progress.total}
-                  label="আপডেট হচ্ছে..."
-                />
-              </div>
             )}
           </div>
           <div className="header-actions">
@@ -754,9 +732,22 @@ function App() {
               {autoRefresh ? <Wifi size={18} /> : <WifiOff size={18} />}
               {autoRefresh ? 'লাইভ' : 'অফ'}
             </button>
-            <button className="refresh-btn" onClick={() => loadNews()} disabled={loading}>
-              <RefreshCw size={18} className={loading ? 'spin' : ''} />
-              আপডেট করুন
+            <button
+              className={`refresh-btn ${loading || backgroundRefreshing || loadingImages ? 'is-loading' : ''}`}
+              onClick={() => loadNews()}
+              disabled={loading || backgroundRefreshing || loadingImages}
+              style={{
+                '--progress': `${(progress.current / (progress.total || 1)) * 100}%`
+              }}
+            >
+              <RefreshCw size={18} className={loading || backgroundRefreshing ? 'spin' : ''} />
+              {loading || backgroundRefreshing ? (
+                progress.total > 0 ? `${progress.current} / ${progress.total}` : 'চেক করা হচ্ছে...'
+              ) : loadingImages ? (
+                'ছবি লোড হচ্ছে...'
+              ) : (
+                'আপডেট করুন'
+              )}
             </button>
           </div>
         </div>
