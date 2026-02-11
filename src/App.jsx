@@ -551,11 +551,11 @@ function App() {
         const idx = displayedNews.findIndex(n => n.id === selectedNews.id);
         if (e.key === 'ArrowLeft' && idx > 0) {
           e.preventDefault();
-          const prev = displayedNews[idx - 1];
+          const prev = displayedNews[idx - 1].primary;
           handleCardClick(prev);
         } else if (e.key === 'ArrowRight' && idx < displayedNews.length - 1) {
           e.preventDefault();
-          const next = displayedNews[idx + 1];
+          const next = displayedNews[idx + 1].primary;
           handleCardClick(next);
         } else if (key === 'b') {
           toggleBookmark(selectedNews.id);
@@ -867,11 +867,11 @@ function App() {
           onArticleClick={handleCardClick}
           onPrev={() => {
             const idx = displayedNews.findIndex(n => n.id === selectedNews.id);
-            if (idx > 0) handleCardClick(displayedNews[idx - 1]);
+            if (idx > 0) handleCardClick(displayedNews[idx - 1].primary);
           }}
           onNext={() => {
             const idx = displayedNews.findIndex(n => n.id === selectedNews.id);
-            if (idx < displayedNews.length - 1) handleCardClick(displayedNews[idx + 1]);
+            if (idx < displayedNews.length - 1) handleCardClick(displayedNews[idx + 1].primary);
           }}
           hasPrev={displayedNews.findIndex(n => n.id === selectedNews.id) > 0}
           hasNext={displayedNews.findIndex(n => n.id === selectedNews.id) < displayedNews.length - 1}

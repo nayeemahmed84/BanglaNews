@@ -25,7 +25,7 @@ const RelatedNews = ({ currentNews, allNews, onArticleClick }) => {
 
             // Title/Content keyword overlap (simple approximation)
             // Extract significant words from current title (length > 4)
-            const keywords = currentNews.title.split(/\s+/).filter(w => w.length > 4);
+            const keywords = (currentNews.title || '').split(/\s+/).filter(w => w.length > 4);
             const itemText = (item.title + ' ' + (item.shortContent || '')).toLowerCase();
 
             keywords.forEach(kw => {
